@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Header Mapper & Register Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header-section">
+            <div class="logo-container">
+                <div class="logo-icon">⇄</div>
+                <h1>Excel Register Mapper</h1>
+            </div>
+            <p>Map external spreadsheets to standard sales & purchase registers automatically</p>
+        </div>        <!-- SINGLE PAGE LAYOUT -->
+        
+        <!-- CARD 1: EXCEL INPUT -->
+        <div class="card" id="card-excel" style="margin-bottom: 25px;">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <div class="step-title">Source Excel File & Worksheet</div>
+            </div>
+            
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('excel_file').click()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <div>
+                    <p style="font-weight: 600; font-size: 1.05rem; margin-bottom: 4px;">Drag and drop your Excel file here</p>
+                    <p>or <span class="highlight">browse files</span> from your computer</p>
+                </div>
+                <p style="font-size: 0.8rem;">Supports .xlsx and .xls formats</p>
+                <input type="file" id="excel_file" class="file-input" accept=".xlsx, .xls">
+            </div>
+
+            <div id="file-info-container" class="file-info">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="color: var(--accent-primary);">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                </svg>
+                <span id="uploaded-filename">Workbook.xlsx</span>
+                <span class="remove-file" onclick="resetFile()">&times;</span>
+            </div>
+
+            <div id="upload-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
+
+            <!-- SHEET SELECT dropdown (only visible/enabled after upload) -->
+            <div id="sheet-select-container" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">Select the worksheet containing register records:</p>
+                <div class="select-wrapper">
+                    <select id="sheet_select">
+                        <option value="">-- Choose a sheet --</option>
+                    </select>
+                </div>
+                <div id="sheet-status" class="status-box status-info" style="margin-top: 10px; display: none;"></div>
+            </div>
+        </div>
+
+        <!-- CARD 2: TALLY PRIME INTEGRATION (REQUIRED) -->
+        <div class="card" id="card-tally" style="margin-bottom: 25px;">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <div class="step-title">Tally Prime Sync & Import (Required)</div>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                Select synced Tally companies or import fresh ledger/stock records from your local Tally Prime instance (port 9000). Both fields are required for mapping.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; flex-wrap: wrap;">
+                <!-- LEDGER IMPORT -->
+                <div style="background: rgba(10, 25, 47, 0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+                    <h3 style="font-size: 1rem; font-weight: 700; color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+                        📂 Ledger Name Import (Account Books)
+                    </h3>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Select Synced Company:</label>
+                        <div class="select-wrapper">
+                            <select id="tally_ledger_company_select">
+                                <option value="">-- Select Synced Company --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="text-align: center; font-weight: bold; color: var(--text-muted); font-size: 0.82rem;">or sync fresh data</div>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name:</label>
+                        <input type="text" id="new_ledger_company_name" placeholder="Enter Company Name exactly...">
+                    </div>
+                    <button type="button" class="btn" id="btn-sync-ledgers" style="width: 100%; padding: 11px; font-size: 0.9rem; margin-top: 5px;">
+                        <span>Sync Ledger Names</span>
+                        <div class="loader" id="ledgers-loader"></div>
+                    </button>
+                </div>
+
+                <!-- STOCK ITEM IMPORT -->
+                <div style="background: rgba(10, 25, 47, 0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+                    <h3 style="font-size: 1rem; font-weight: 700; color: #4f46e5; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+                        📦 Item Stock Import (Inventory)
+                    </h3>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Select Synced Company:</label>
+                        <div class="select-wrapper">
+                            <select id="tally_stock_company_select">
+                                <option value="">-- Select Synced Company --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="text-align: center; font-weight: bold; color: var(--text-muted); font-size: 0.82rem;">or sync fresh data</div>
+                    <div>
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name:</label>
+                        <input type="text" id="new_stock_company_name" placeholder="Enter Company Name exactly...">
+                    </div>
+                    <button type="button" class="btn" id="btn-sync-stock" style="width: 100%; padding: 11px; font-size: 0.9rem; margin-top: 5px; background: linear-gradient(135deg, #4f46e5, #4338ca);">
+                        <span>Sync Stock Items</span>
+                        <div class="loader" id="stock-loader"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="tally-sync-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
+        </div>
+
+        <!-- CARD 3: COLUMN MAPPING GRID -->
+        <div class="card" id="card-mapping" style="margin-bottom: 25px; display: none;">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <div class="step-title">Map Column Headers</div>
+                <button class="btn btn-secondary" style="margin-left: auto; padding: 8px 16px; font-size: 0.85rem;" onclick="triggerAutoMatch()">
+                    ⚡ Auto-Match Headers
+                </button>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                Map your source Excel columns to the standardized output fields. Items marked with <span class="badge" style="margin-left: 0;">Required</span> must be mapped to proceed.
+            </p>
+
+            <div class="mapping-grid" id="mapping-grid-container">
+                <!-- Dynamic columns injected here by JS -->
+            </div>
+        </div>
+
+        <!-- CARD 4: PARTY VERIFICATION AND LEDGER CREATION -->
+        <div class="card" id="card-generate" style="margin-bottom: 25px;">
+            <div class="step-header">
+                <div class="step-number">4</div>
+                <div class="step-title">Party Ledger Verification & Sales XML</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button class="btn" id="btn-check-parties" onclick="checkPartyNames()" style="padding: 14px; font-size: 1.05rem; font-weight: 700; width: 100%;">
+                    <span>Check Party Names</span>
+                    <div class="loader" id="check-parties-loader"></div>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="check-icon" style="margin-left: 8px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+
+                <div id="mapping-status" class="status-box status-error" style="display: none;"></div>
+
+                <!-- PARTY CHECK RESULTS REGION -->
+                <div id="party-check-results-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px; flex-direction: column; gap: 20px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Verification Report</h3>
+                    
+                    <!-- PERFECT MATCHES -->
+                    <div id="report-perfect" style="background: rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.15); border-radius: 8px; padding: 12px 16px;">
+                        <div style="font-weight: 600; color: var(--accent-success); font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-success); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">✓</span>
+                            <span>Perfect Matches in Tally: <strong id="count-perfect">0</strong></span>
+                        </div>
+                        <p id="list-perfect" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;"></p>
+                    </div>
+
+                    <!-- SIMILAR MATCHES -->
+                    <div id="report-similar" style="background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: 8px; padding: 12px 16px;">
+                        <div style="font-weight: 600; color: var(--accent-primary); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">⚡</span>
+                            <span>Similar Matches (Fuzzy Auto-Link): <strong id="count-similar">0</strong></span>
+                        </div>
+                        <div id="list-similar" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem;">
+                            <!-- items dynamic -->
+                        </div>
+                    </div>
+
+                    <!-- NON-EXISTING PARTIES -->
+                    <div id="report-missing" style="background: rgba(217, 119, 6, 0.05); border: 1px solid rgba(217, 119, 6, 0.15); border-radius: 8px; padding: 12px 16px;">
+                        <div style="font-weight: 600; color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-warning); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">?</span>
+                            <span>Non-Existing Ledgers (Will be Created): <strong id="count-missing">0</strong></span>
+                        </div>
+                        <div id="table-missing-wrapper" style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                                        <th style="padding: 6px 8px; font-weight: 600;">Party Name</th>
+                                        <th style="padding: 6px 8px; font-weight: 600;">State Name</th>
+                                        <th style="padding: 6px 8px; font-weight: 600;">GSTIN</th>
+                                        <th style="padding: 6px 8px; font-weight: 600;">Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-missing">
+                                    <!-- rows dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                                  <!-- ACTION BUTTONS -->
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+                        <button class="btn" id="btn-create-tally-ledgers" onclick="createTallyLedgers()" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-warning), #d97706); display: none;">
+                            <span>Create Party Names Ledgers in Tally</span>
+                            <div class="loader" id="create-ledgers-loader"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </div>
+
+    <script>
+        // List of target fields with attributes
+        const targetFields = [
+            { id: "Invoice Date", label: "Invoice Date", desc: "Date of the invoice transaction", required: true },
+            { id: "Invoice No", label: "Invoice No", desc: "Invoice or reference identifier", required: true },
+            { id: "Party Name", label: "Party Name", desc: "Customer or Supplier business ledger name", required: true },
+            { id: "GST no", label: "GST no", desc: "Supplier/Buyer GSTIN (Optional, blank if empty)", required: false },
+            { id: "State Name", label: "State Name", desc: "Place of Supply / State name", required: true },
+            { id: "Product", label: "Product", desc: "Name of the item or description of service", required: true },
+            { id: "HSN Code", label: "HSN Code", desc: "HSN/SAC code of the product", required: true },
+            { id: "Qty", label: "Qty", desc: "Item quantity", required: true },
+            { id: "Taxable Amount", label: "Taxable Amount", desc: "Pre-tax taxable value", required: true },
+            { id: "CGST Amount", label: "CGST Amount", desc: "Central GST amount", required: true },
+            { id: "SGST Amount", label: "SGST Amount", desc: "State GST amount", required: true },
+            { id: "IGST Amount", label: "IGST Amount", desc: "Integrated GST amount", required: true },
+            { id: "Total Amount", label: "Total Amount", desc: "Net invoice amount", required: true },
+            { id: "UOM", label: "UOM", desc: "Unit of Measurement (e.g. Nos, Pcs)", required: true }
+        ];
+
+        // Fuzzy matching configuration
+        const autoMatches = {
+            "Invoice Date": ["invoice date", "inv date", "date", "invdate", "invoicedate", "vch date", "voucher date"],
+            "Invoice No": ["invoice no", "inv no", "invoice number", "inv number", "invoice_no", "inv_no", "voucher no", "vch no", "inv_number", "bill no"],
+            "Party Name": ["party name", "party", "supplier name", "ledger name", "customer name", "particulars", "party_name"],
+            "GST no": ["gst no", "gst", "gstin", "gstin of supplier", "supplier gstin", "party gstin", "gst_no", "gstin/uin", "gstin uin"],
+            "State Name": ["state name", "state", "place of supply", "pos", "state_name", "place_of_supply"],
+            "Product": ["product", "item name", "item", "description", "product description", "stock item", "particular", "item_name"],
+            "HSN Code": ["hsn code", "hsn", "hsn/sac", "hsn_code", "hsn_sac"],
+            "Qty": ["qty", "quantity", "billed qty", "actual qty", "billed_qty"],
+            "Taxable Amount": ["taxable amount", "taxable value", "taxable val", "taxable", "taxable amt", "taxable_amount", "taxable_value", "taxable_val", "taxable amt (₹)"],
+            "CGST Amount": ["cgst amount", "cgst amt", "central tax", "cgst", "cgst_amount", "cgst amt (₹)", "central tax (₹)"],
+            "SGST Amount": ["sgst amount", "sgst amt", "state tax", "utgst", "sgst", "sgst_amount", "sgst amt (₹)", "state tax (₹)", "state/ut tax"],
+            "IGST Amount": ["igst amount", "igst amt", "integrated tax", "igst", "igst_amount", "igst amt (₹)", "integrated tax (₹)"],
+            "Total Amount": ["total amount", "total amt", "invoice value", "inv value", "total", "total_amount", "net amount", "total amt (₹)", "invoice value (₹)"],
+            "UOM": ["uom", "unit", "units", "uom name", "nos", "pcs", "unit of measure"]
+        };
+
+        let tempFileId = "";
+        let originalFilename = "";
+        let excelHeaders = [];
+
+        // Drag and drop event handlers
+        const dropzone = document.getElementById("dropzone");
+        const excelInput = document.getElementById("excel_file");
+
+        ["dragenter", "dragover"].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropzone.classList.add("dragover");
+            }, false);
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropzone.classList.remove("dragover");
+            }, false);
+        });
+
+        dropzone.addEventListener("drop", e => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                excelInput.files = files;
+                handleFileSelected();
+            }
+        });
+
+        excelInput.addEventListener("change", handleFileSelected);
+
+        function handleFileSelected() {
+            const file = excelInput.files[0];
+            if (!file) return;
+
+            originalFilename = file.name;
+            document.getElementById("uploaded-filename").innerText = originalFilename;
+            document.getElementById("dropzone").style.display = "none";
+            document.getElementById("file-info-container").style.display = "flex";
+
+            // Upload the file to server
+            uploadFile(file);
+        }
+        function resetFile() {
+            excelInput.value = "";
+            tempFileId = "";
+            originalFilename = "";
+            document.getElementById("dropzone").style.display = "flex";
+            document.getElementById("file-info-container").style.display = "none";
+            document.getElementById("sheet-select-container").style.display = "none";
+            document.getElementById("card-mapping").style.display = "none";
+            document.getElementById("success-container").style.display = "none";
+            document.getElementById("sheet_select").innerHTML = '<option value="">-- Choose a sheet --</option>';
+            hideStatus("upload-status");
+            hideStatus("sheet-status");
+            hideStatus("mapping-status");
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append("excel_file", file);
+
+            showStatus("upload-status", "upload-loader", "Uploading and parsing workbook...", "info");
+
+            try {
+                const res = await fetch("/upload", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    tempFileId = data.file_id;
+                    
+                    // Populate sheets dropdown
+                    const sheetSelect = document.getElementById("sheet_select");
+                    sheetSelect.innerHTML = '<option value="">-- Choose a sheet --</option>';
+                    data.sheets.forEach(s => {
+                        const opt = document.createElement("option");
+                        opt.value = s;
+                        opt.innerText = s;
+                        sheetSelect.appendChild(opt);
+                    });
+
+                    // Show worksheet selection container
+                    document.getElementById("sheet-select-container").style.display = "block";
+                    showStatus("upload-status", null, `✓ File uploaded successfully. Found ${data.sheets.length} worksheets.`, "success");
+
+                    // Auto select and analyze first sheet if available
+                    if (data.sheets.length > 0) {
+                        sheetSelect.value = data.sheets[0];
+                        analyzeSheet(data.sheets[0]);
+                    }
+                } else {
+                    showStatus("upload-status", null, `❌ Upload failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("upload-status", null, `❌ Network error: ${err.message}`, "error");
+            }
+        }
+
+        // Sheet select change handler
+        document.getElementById("sheet_select").addEventListener("change", (e) => {
+            const sheet = e.target.value;
+            if (sheet) {
+                analyzeSheet(sheet);
+            } else {
+                document.getElementById("card-mapping").style.display = "none";
+            }
+        });
+
+        async function analyzeSheet(sheet) {
+            showStatus("sheet-status", "sheet-loader", "Analyzing sheet headers...", "info");
+            document.getElementById("card-mapping").style.display = "none";
+
+            try {
+                const res = await fetch("/get-headers", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ file_id: tempFileId, sheet_name: sheet })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    excelHeaders = data.headers;
+                    buildMappingGrid(data.headers);
+                    triggerAutoMatch();
+                    hideStatus("sheet-status");
+                    document.getElementById("card-mapping").style.display = "block";
+                } else {
+                    showStatus("sheet-status", null, `❌ Failed to read headers: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("sheet-status", null, `❌ Network error: ${err.message}`, "error");
+            }
+        }
+
+        // Build mapping rows
+        function buildMappingGrid(headers) {
+            const grid = document.getElementById("mapping-grid-container");
+            grid.innerHTML = "";
+
+            targetFields.forEach(field => {
+                const row = document.createElement("div");
+                row.className = "mapping-row";
+                row.id = `row-${field.id.replace(/\s+/g, "_")}`;
+
+                // Label and description
+                const labelDiv = document.createElement("div");
+                labelDiv.className = "mapping-label";
+
+                const titleSpan = document.createElement("span");
+                titleSpan.className = "mapping-title";
+                titleSpan.innerText = field.label;
+
+                if (field.required) {
+                    const reqBadge = document.createElement("span");
+                    reqBadge.className = "badge";
+                    reqBadge.innerText = "Required";
+                    titleSpan.appendChild(reqBadge);
+                } else {
+                    const optBadge = document.createElement("span");
+                    optBadge.className = "badge badge-optional";
+                    optBadge.innerText = "Optional";
+                    titleSpan.appendChild(optBadge);
+                }
+
+                const descSpan = document.createElement("span");
+                descSpan.className = "mapping-desc";
+                descSpan.innerText = field.desc;
+
+                labelDiv.appendChild(titleSpan);
+                labelDiv.appendChild(descSpan);
+
+                // Auto match text indicator
+                const autoIndicator = document.createElement("div");
+                autoIndicator.className = "auto-mapped-indicator";
+                autoIndicator.id = `auto-match-ind-${field.id.replace(/\s+/g, "_")}`;
+                autoIndicator.innerHTML = `<span>⚡ Auto-matched</span>`;
+                labelDiv.appendChild(autoIndicator);
+
+                // Dropdown selector
+                const selectContainer = document.createElement("div");
+                selectContainer.className = "mapping-select-container";
+
+                const dot = document.createElement("div");
+                dot.className = "mapping-status";
+
+                const selWrapper = document.createElement("div");
+                selWrapper.className = "select-wrapper";
+                selWrapper.style.flex = "1";
+
+                const select = document.createElement("select");
+                select.className = "mapping-dropdown";
+                select.id = `select-${field.id.replace(/\s+/g, "_")}`;
+                select.setAttribute("data-target", field.id);
+                select.addEventListener("change", handleMappingChange);
+
+                // Default empty option
+                const defaultOpt = document.createElement("option");
+                defaultOpt.value = "";
+                defaultOpt.innerText = "-- Select Source Header --";
+                select.appendChild(defaultOpt);
+
+                // Add source headers
+                headers.forEach(h => {
+                    const opt = document.createElement("option");
+                    opt.value = h;
+                    opt.innerText = h;
+                    select.appendChild(opt);
+                });
+
+                selWrapper.appendChild(select);
+                selectContainer.appendChild(dot);
+                selectContainer.appendChild(selWrapper);
+
+                row.appendChild(labelDiv);
+                row.appendChild(selectContainer);
+                grid.appendChild(row);
+            });
+        }
+
+        // Handle dropdown value changes
+        function handleMappingChange(e) {
+            const dropdown = e.target;
+            const targetField = dropdown.getAttribute("data-target");
+            const row = document.getElementById(`row-${targetField.replace(/\s+/g, "_")}`);
+            const autoInd = document.getElementById(`auto-match-ind-${targetField.replace(/\s+/g, "_")}`);
+
+            // Remove auto-mapped flag if user manually changed it
+            if (autoInd) {
+                autoInd.style.display = "none";
+            }
+
+            if (dropdown.value) {
+                row.classList.add("mapped");
+            } else {
+                row.classList.remove("mapped");
+            }
+
+            validateMappingForm();
+        }
+
+        // Auto match source headers based on fuzzy lists
+        function triggerAutoMatch() {
+            targetFields.forEach(field => {
+                const matchPatterns = autoMatches[field.id] || [];
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                const row = document.getElementById(`row-${field.id.replace(/\s+/g, "_")}`);
+                const autoInd = document.getElementById(`auto-match-ind-${field.id.replace(/\s+/g, "_")}`);
+
+                if (!dropdown) return;
+
+                // Reset state
+                dropdown.value = "";
+                row.classList.remove("mapped");
+                autoInd.style.display = "none";
+
+                // Scan options for matches
+                for (let i = 0; i < dropdown.options.length; i++) {
+                    const optionVal = dropdown.options[i].value;
+                    if (!optionVal) continue;
+
+                    const cleanVal = optionVal.toLowerCase().trim();
+
+                    // Check direct match or contains word matches
+                    let foundMatch = matchPatterns.some(p => {
+                        const cleanPattern = p.toLowerCase();
+                        return cleanVal === cleanPattern || 
+                               cleanVal.includes(cleanPattern) || 
+                               cleanPattern === optionVal.toLowerCase().trim();
+                    });
+
+                    if (foundMatch) {
+                        dropdown.value = optionVal;
+                        row.classList.add("mapped");
+                        autoInd.style.display = "flex";
+                        break;
+                    }
+                }
+            });
+
+            validateMappingForm();
+        }
+
+        // Validate mapping form - checking required fields
+        function validateMappingForm() {
+            let allRequiredMapped = true;
+            
+            targetFields.forEach(field => {
+                if (field.required) {
+                    const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                    if (!dropdown || !dropdown.value) {
+                        allRequiredMapped = false;
+                    }
+                }
+            });
+
+            document.getElementById("btn-check-parties").disabled = !allRequiredMapped;
+            hideStatus("mapping-status");
+        }
+
+        // DOM Loaded event to initialize Tally info
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSyncedCompanies();
+            
+            // Sync buttons click handlers
+            document.getElementById("btn-sync-ledgers").addEventListener("click", () => syncTally("ledgers"));
+            document.getElementById("btn-sync-stock").addEventListener("click", () => syncTally("stock"));
+        });
+
+        async function loadSyncedCompanies() {
+            try {
+                const res = await fetch("/api/tally/companies");
+                const data = await res.json();
+                if (data.success) {
+                    const ledgerSelect = document.getElementById("tally_ledger_company_select");
+                    const stockSelect = document.getElementById("tally_stock_company_select");
+                    
+                    const currentLedger = ledgerSelect.value;
+                    const currentStock = stockSelect.value;
+                    
+                    ledgerSelect.innerHTML = '<option value="">-- Select Synced Company --</option>';
+                    stockSelect.innerHTML = '<option value="">-- Select Synced Company --</option>';
+                    
+                    data.companies.forEach(co => {
+                        if (co.has_ledgers) {
+                            const opt = document.createElement("option");
+                            opt.value = co.display_name;
+                            opt.innerText = `${co.display_name} (Sync: ${co.ledger_last_sync} - ${co.ledger_count} Ledgers)`;
+                            ledgerSelect.appendChild(opt);
+                        }
+                        if (co.has_stock) {
+                            const opt = document.createElement("option");
+                            opt.value = co.display_name;
+                            opt.innerText = `${co.display_name} (Sync: ${co.stock_last_sync} - ${co.stock_count} Items)`;
+                            stockSelect.appendChild(opt);
+                        }
+                    });
+                    
+                    if (currentLedger) ledgerSelect.value = currentLedger;
+                    if (currentStock) stockSelect.value = currentStock;
+                }
+            } catch (err) {
+                console.error("Failed to load synced companies:", err);
+            }
+        }
+
+        async function syncTally(type) {
+            const inputId = type === "ledgers" ? "new_ledger_company_name" : "new_stock_company_name";
+            const selectId = type === "ledgers" ? "tally_ledger_company_select" : "tally_stock_company_select";
+            
+            const newCoInput = document.getElementById(inputId);
+            const companyName = newCoInput.value.trim();
+            const selectVal = document.getElementById(selectId).value;
+            
+            const activeCompany = companyName || selectVal;
+            
+            const btnLedger = document.getElementById("btn-sync-ledgers");
+            const btnStock = document.getElementById("btn-sync-stock");
+            
+            if (!activeCompany) {
+                alert("Please select a company or enter a Company Name to sync.");
+                return;
+            }
+            
+            btnLedger.disabled = true;
+            btnStock.disabled = true;
+            
+            const apiEndpoint = type === "ledgers" ? "/api/tally/sync" : "/api/tally/sync-stock";
+            const typeLabel = type === "ledgers" ? "accounting ledgers" : "inventory stock items";
+            const loaderId = type === "ledgers" ? "ledgers-loader" : "stock-loader";
+            
+            showStatus("tally-sync-status", loaderId, `Connecting to Tally on port 9000 to sync ${typeLabel} for '${activeCompany}'...`, "info");
+            
+            try {
+                const res = await fetch(apiEndpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ company_name: activeCompany })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showStatus("tally-sync-status", null, `✓ Successfully synced ${data.count} ${typeLabel} for '${data.company_name}'!`, "success");
+                    newCoInput.value = "";
+                    await loadSyncedCompanies();
+                    
+                    // Auto select the synced company
+                    document.getElementById(selectId).value = data.company_name;
+                } else {
+                    showStatus("tally-sync-status", null, `❌ Sync failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("tally-sync-status", null, `❌ Network error: ${err.message}`, "error");
+            } finally {
+                btnLedger.disabled = false;
+                btnStock.disabled = false;
+            }
+        }
+
+        let lastNonExistingParties = [];
+
+        // Check Party Names matching report
+        async function checkPartyNames() {
+            const sheet = document.getElementById("sheet_select").value;
+            if (!tempFileId) {
+                showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
+                return;
+            }
+            if (!sheet) {
+                showStatus("mapping-status", null, "⚠️ Please select a worksheet sheet first.", "error");
+                return;
+            }
+
+            const mappings = {};
+            let mappingValid = true;
+
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                } else if (field.required) {
+                    mappingValid = false;
+                }
+            });
+
+            if (!mappingValid) {
+                showStatus("mapping-status", null, "⚠️ Please map all required columns before checking.", "error");
+                return;
+            }
+
+            // Get Ledger Company
+            const ledgerCo = document.getElementById("tally_ledger_company_select").value;
+            if (!ledgerCo) {
+                showStatus("mapping-status", null, "⚠️ Please select/sync a Tally Ledger Company. This is required for party checking.", "error");
+                return;
+            }
+
+            showStatus("mapping-status", "check-parties-loader", "Checking party names against Tally ledgers...", "info");
+            document.getElementById("btn-check-parties").disabled = true;
+            document.getElementById("party-check-results-container").style.display = "none";
+
+            try {
+                const res = await fetch("/api/check-parties", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        ledger_company: ledgerCo
+                    })
+                });
+                
+                const data = await res.json();
+
+                if (data.success) {
+                    hideStatus("mapping-status");
+                    document.getElementById("party-check-results-container").style.display = "flex";
+
+                    // 1. Perfect matches
+                    document.getElementById("count-perfect").innerText = data.perfect_matches.length;
+                    const listPerf = document.getElementById("list-perfect");
+                    if (data.perfect_matches.length > 0) {
+                        listPerf.innerText = data.perfect_matches.join(", ");
+                        document.getElementById("report-perfect").style.display = "block";
+                    } else {
+                        listPerf.innerText = "No exact matches found.";
+                        document.getElementById("report-perfect").style.display = "none";
+                    }
+
+                    // 2. Similar matches
+                    document.getElementById("count-similar").innerText = data.similar_matches.length;
+                    const listSim = document.getElementById("list-similar");
+                    listSim.innerHTML = "";
+                    if (data.similar_matches.length > 0) {
+                        data.similar_matches.forEach(item => {
+                            const div = document.createElement("div");
+                            div.style.display = "flex";
+                            div.style.justifyContent = "space-between";
+                            div.style.borderBottom = "1px dashed rgba(79, 70, 229, 0.1)";
+                            div.style.padding = "4px 0";
+                            div.innerHTML = `
+                                <span>Original: <strong>${item.original}</strong> &rarr; Tally Match: <strong style="color: var(--accent-primary);">${item.matched}</strong></span>
+                                <span class="badge" style="background: rgba(79, 70, 229, 0.12); color: var(--accent-primary); border: 1px solid rgba(79, 70, 229, 0.25);">${item.score}% match</span>
+                            `;
+                            listSim.appendChild(div);
+                        });
+                        document.getElementById("report-similar").style.display = "block";
+                    } else {
+                        document.getElementById("report-similar").style.display = "none";
+                    }
+
+                    // 3. Non-existing
+                    document.getElementById("count-missing").innerText = data.non_existing.length;
+                    const tbody = document.getElementById("tbody-missing");
+                    tbody.innerHTML = "";
+                    lastNonExistingParties = data.non_existing;
+
+                    if (data.non_existing.length > 0) {
+                        data.non_existing.forEach(item => {
+                            const tr = document.createElement("tr");
+                            tr.style.borderBottom = "1px solid var(--border-color)";
+                            tr.innerHTML = `
+                                <td style="padding: 6px 8px; font-weight: 600;">${item.name}</td>
+                                <td style="padding: 6px 8px;">${item.state}</td>
+                                <td style="padding: 6px 8px; font-family: monospace;">${item.gstin || '-'}</td>
+                                <td style="padding: 6px 8px;">
+                                    <span class="badge" style="${item.gstin ? 'background: rgba(13, 148, 136, 0.1); color: #0d9488; border: 1px solid #0d9488;' : 'background: rgba(217, 119, 6, 0.1); color: #d97706; border: 1px solid #d97706;'}">
+                                        ${item.gstin ? 'Regular' : 'Unregistered'}
+                                    </span>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        document.getElementById("report-missing").style.display = "block";
+                        
+                        // Show create button
+                        const createBtn = document.getElementById("btn-create-tally-ledgers");
+                        createBtn.style.display = "block";
+                        createBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Party Ledgers in Tally`;
+                    } else {
+                        document.getElementById("report-missing").style.display = "none";
+                        document.getElementById("btn-create-tally-ledgers").style.display = "none";
+                    }
+                } else {
+                    showStatus("mapping-status", null, `❌ Verification failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+            } finally {
+                document.getElementById("btn-check-parties").disabled = false;
+            }
+        }
+
+        // Create missing party ledgers in Tally Prime directly
+        async function createTallyLedgers() {
+            const ledgerCo = document.getElementById("tally_ledger_company_select").value;
+            if (!ledgerCo) {
+                alert("Please select a Tally Ledger Company first.");
+                return;
+            }
+            if (!lastNonExistingParties || lastNonExistingParties.length === 0) {
+                alert("No non-existing party ledgers to create.");
+                return;
+            }
+
+            const btn = document.getElementById("btn-create-tally-ledgers");
+            btn.disabled = true;
+            showStatus("mapping-status", "create-ledgers-loader", `Connecting to Tally on port 9000 to create ${lastNonExistingParties.length} ledgers in '${ledgerCo}'...`, "info");
+
+            try {
+                const res = await fetch("/api/tally/create-missing-ledgers", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        ledger_company: ledgerCo,
+                        parties: lastNonExistingParties
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showStatus("mapping-status", null, `✓ Successfully created ${data.created_count} ledgers in Tally!`, "success");
+                    await loadSyncedCompanies();
+                    
+                    // Re-run check party names to update matches list!
+                    await checkPartyNames();
+                } else {
+                    showStatus("mapping-status", null, `❌ Creation failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Status bar helpers
+        function showStatus(elemId, loaderId, message, type) {
+            const statusDiv = document.getElementById(elemId);
+            statusDiv.style.display = "block";
+            statusDiv.className = `status-box status-${type}`;
+            
+            // Text node update
+            statusDiv.innerHTML = "";
+            
+            if (loaderId) {
+                const loader = document.createElement("div");
+                loader.className = "loader";
+                loader.style.display = "inline-block";
+                loader.style.marginRight = "10px";
+                loader.style.verticalAlign = "middle";
+                statusDiv.appendChild(loader);
+            }
+            
+            const txt = document.createElement("span");
+            txt.innerText = message;
+            txt.style.verticalAlign = "middle";
+            statusDiv.appendChild(txt);
+        }
+
+        function hideStatus(elemId) {
+            document.getElementById(elemId).style.display = "none";
+        }
+    </script>
+</body>
+</html>
