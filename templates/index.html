@@ -12,11 +12,11 @@
         <div class="header-section">
             <div class="logo-container">
                 <div class="logo-icon">⇄</div>
-                <h1>Excel Register Mapper</h1>
+                <h1>Sales Register Automation Suite</h1>
             </div>
-            <p>Map external spreadsheets to standard sales & purchase registers automatically</p>
-        </div>        <!-- SINGLE PAGE LAYOUT -->
-        
+            <p>Map external spreadsheets to standard sales registers automatically</p>
+        </div>
+
         <!-- CARD 1: EXCEL INPUT -->
         <div class="card" id="card-excel" style="margin-bottom: 25px;">
             <div class="step-header">
@@ -46,86 +46,33 @@
 
             <div id="upload-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
 
-            <!-- SHEET SELECT dropdown (only visible/enabled after upload) -->
+            <!-- SHEET SELECT AND HEADER ROW CONFIG -->
             <div id="sheet-select-container" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                 <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">Select the worksheet containing register records:</p>
-                <div class="select-wrapper">
-                    <select id="sheet_select">
-                        <option value="">-- Choose a sheet --</option>
-                    </select>
-                </div>
-                <div id="sheet-status" class="status-box status-info" style="margin-top: 10px; display: none;"></div>
-            </div>
-        </div>
-
-        <!-- CARD 2: TALLY PRIME INTEGRATION (REQUIRED) -->
-        <div class="card" id="card-tally" style="margin-bottom: 25px;">
-            <div class="step-header">
-                <div class="step-number">2</div>
-                <div class="step-title">Tally Prime Sync & Import (Required)</div>
-            </div>
-            
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
-                Select synced Tally companies or import fresh ledger/stock records from your local Tally Prime instance (port 9000). Both fields are required for mapping.
-            </p>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; flex-wrap: wrap;">
-                <!-- LEDGER IMPORT -->
-                <div style="background: rgba(10, 25, 47, 0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
-                    <h3 style="font-size: 1rem; font-weight: 700; color: var(--accent-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
-                        📂 Ledger Name Import (Account Books)
-                    </h3>
-                    <div>
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Select Synced Company:</label>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex: 2; min-width: 200px;">
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Worksheet Name:</label>
                         <div class="select-wrapper">
-                            <select id="tally_ledger_company_select">
-                                <option value="">-- Select Synced Company --</option>
+                            <select id="sheet_select">
+                                <option value="">-- Choose a sheet --</option>
                             </select>
                         </div>
                     </div>
-                    <div style="text-align: center; font-weight: bold; color: var(--text-muted); font-size: 0.82rem;">or sync fresh data</div>
-                    <div>
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name:</label>
-                        <input type="text" id="new_ledger_company_name" placeholder="Enter Company Name exactly...">
+                    <div style="width: 130px;">
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Header Row index:</label>
+                        <input type="number" id="header_row" value="1" min="1" placeholder="e.g. 1">
                     </div>
-                    <button type="button" class="btn" id="btn-sync-ledgers" style="width: 100%; padding: 11px; font-size: 0.9rem; margin-top: 5px;">
-                        <span>Sync Ledger Names</span>
-                        <div class="loader" id="ledgers-loader"></div>
-                    </button>
                 </div>
 
-                <!-- STOCK ITEM IMPORT -->
-                <div style="background: rgba(10, 25, 47, 0.01); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
-                    <h3 style="font-size: 1rem; font-weight: 700; color: #4f46e5; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
-                        📦 Item Stock Import (Inventory)
-                    </h3>
-                    <div>
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Select Synced Company:</label>
-                        <div class="select-wrapper">
-                            <select id="tally_stock_company_select">
-                                <option value="">-- Select Synced Company --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style="text-align: center; font-weight: bold; color: var(--text-muted); font-size: 0.82rem;">or sync fresh data</div>
-                    <div>
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name:</label>
-                        <input type="text" id="new_stock_company_name" placeholder="Enter Company Name exactly...">
-                    </div>
-                    <button type="button" class="btn" id="btn-sync-stock" style="width: 100%; padding: 11px; font-size: 0.9rem; margin-top: 5px; background: linear-gradient(135deg, #4f46e5, #4338ca);">
-                        <span>Sync Stock Items</span>
-                        <div class="loader" id="stock-loader"></div>
-                    </button>
-                </div>
+                <div id="sheet-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
             </div>
-
-            <div id="tally-sync-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
         </div>
 
-        <!-- CARD 3: COLUMN MAPPING GRID -->
+        <!-- CARD 2: COLUMN MAPPING GRID -->
         <div class="card" id="card-mapping" style="margin-bottom: 25px; display: none;">
             <div class="step-header">
-                <div class="step-number">3</div>
+                <div class="step-number">2</div>
                 <div class="step-title">Map Column Headers</div>
                 <button class="btn btn-secondary" style="margin-left: auto; padding: 8px 16px; font-size: 0.85rem;" onclick="triggerAutoMatch()">
                     ⚡ Auto-Match Headers
@@ -139,23 +86,103 @@
             <div class="mapping-grid" id="mapping-grid-container">
                 <!-- Dynamic columns injected here by JS -->
             </div>
+
+            <!-- Date Filter Slicer -->
+            <div id="date-slicer-container" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); display: none;">
+                <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">📅</span>
+                    <span>Date Filter Slicer (Optional)</span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+                    Only process entries within this date range (both dates inclusive). Initially filled with Excel min and max dates.
+                </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px;">
+                        <label for="filter-from-date" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">From Date</label>
+                        <input type="date" id="filter-from-date" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-size: 0.95rem; width: 100%; box-sizing: border-box;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px;">
+                        <label for="filter-to-date" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">To Date</label>
+                        <input type="date" id="filter-to-date" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-size: 0.95rem; width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD 3: TALLY PRIME INTEGRATION -->
+        <div class="card" id="card-tally" style="margin-bottom: 25px; display: none;">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <div class="step-title">Tally Prime Sync & Import (Required)</div>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
+                Select synced Tally companies or sync fresh database records from your local Tally Prime instance (running on port 9000).
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 15px;">
+                <!-- LEDGER IMPORT -->
+                <div class="sync-box">
+                    <h3 class="sync-title">📂 Ledger Names (Account Books)</h3>
+                    <p class="sync-desc">Retrieve synced ledger names from Tally to verify customer matches.</p>
+                    <div class="company-profile-bar">
+                        <span class="profile-label">Company Profile:</span>
+                        <div class="select-wrapper dark-select">
+                            <select id="tally_ledger_company_select">
+                                <option value="">-- Select Synced Company --</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-sync-tally" id="btn-open-sync-ledgers-modal">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 2px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+                            </svg>
+                            Sync Tally
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STOCK ITEM IMPORT -->
+                <div class="sync-box">
+                    <h3 class="sync-title">📦 Item Stock (Inventory)</h3>
+                    <p class="sync-desc">Retrieve stock item names from Tally to verify product matches.</p>
+                    <div class="company-profile-bar">
+                        <span class="profile-label">Company Profile:</span>
+                        <div class="select-wrapper dark-select">
+                            <select id="tally_stock_company_select">
+                                <option value="">-- Select Synced Company --</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-sync-tally" id="btn-open-sync-stock-modal">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 2px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+                            </svg>
+                            Sync Tally
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tally-sync-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
         </div>
 
         <!-- CARD 4: PARTY VERIFICATION AND LEDGER CREATION -->
-        <div class="card" id="card-generate" style="margin-bottom: 25px;">
+        <div class="card" id="card-generate" style="margin-bottom: 25px; display: none;">
             <div class="step-header">
                 <div class="step-number">4</div>
                 <div class="step-title">Party Ledger Verification & Sales XML</div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 15px;">
-                <button class="btn" id="btn-check-parties" onclick="checkPartyNames()" style="padding: 14px; font-size: 1.05rem; font-weight: 700; width: 100%;">
-                    <span>Check Party Names</span>
-                    <div class="loader" id="check-parties-loader"></div>
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="check-icon" style="margin-left: 8px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 15px; width: 100%;">
+                    <button class="btn" id="btn-check-parties" onclick="checkPartyNames()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; display: flex; justify-content: center; align-items: center;">
+                        <span>Check Party Names</span>
+                        <div class="loader" id="check-parties-loader" style="margin-left: 8px;"></div>
+                    </button>
+                    <button class="btn" id="btn-check-products" onclick="checkProductNames()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-primary), #2563eb); display: flex; justify-content: center; align-items: center;">
+                        <span>Check Product Names</span>
+                        <div class="loader" id="check-products-loader" style="margin-left: 8px;"></div>
+                    </button>
+                </div>
 
                 <div id="mapping-status" class="status-box status-error" style="display: none;"></div>
 
@@ -164,7 +191,7 @@
                     <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Verification Report</h3>
                     
                     <!-- PERFECT MATCHES -->
-                    <div id="report-perfect" style="background: rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.15); border-radius: 8px; padding: 12px 16px;">
+                    <div id="report-perfect" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 12px 16px;">
                         <div style="font-weight: 600; color: var(--accent-success); font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
                             <span style="background: var(--accent-success); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">✓</span>
                             <span>Perfect Matches in Tally: <strong id="count-perfect">0</strong></span>
@@ -173,7 +200,7 @@
                     </div>
 
                     <!-- SIMILAR MATCHES -->
-                    <div id="report-similar" style="background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.15); border-radius: 8px; padding: 12px 16px;">
+                    <div id="report-similar" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px; padding: 12px 16px;">
                         <div style="font-weight: 600; color: var(--accent-primary); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                             <span style="background: var(--accent-primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">⚡</span>
                             <span>Similar Matches (Fuzzy Auto-Link): <strong id="count-similar">0</strong></span>
@@ -184,7 +211,7 @@
                     </div>
 
                     <!-- NON-EXISTING PARTIES -->
-                    <div id="report-missing" style="background: rgba(217, 119, 6, 0.05); border: 1px solid rgba(217, 119, 6, 0.15); border-radius: 8px; padding: 12px 16px;">
+                    <div id="report-missing" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 12px 16px;">
                         <div style="font-weight: 600; color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                             <span style="background: var(--accent-warning); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">?</span>
                             <span>Non-Existing Ledgers (Will be Created): <strong id="count-missing">0</strong></span>
@@ -204,18 +231,209 @@
                                 </tbody>
                             </table>
                         </div>
-                                  <!-- ACTION BUTTONS -->
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
-                        <button class="btn" id="btn-create-tally-ledgers" onclick="createTallyLedgers()" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-warning), #d97706); display: none;">
-                            <span>Create Party Names Ledgers in Tally</span>
-                            <div class="loader" id="create-ledgers-loader"></div>
-                        </button>
                     </div>
+                </div>
+
+                <!-- PRODUCT CHECK RESULTS REGION -->
+                <div id="product-check-results-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px; flex-direction: column; gap: 20px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Product Verification Report</h3>
+                    
+                    <div id="report-products-perfect" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 12px 16px;">
+                        <div style="font-weight: 600; color: var(--accent-success); font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-success); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">✓</span>
+                            <span>Perfect Matches in Item Stock: <strong id="count-products-perfect">0</strong></span>
+                        </div>
+                        <p id="list-products-perfect" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; word-break: break-all;"></p>
+                    </div>
+
+                    <div id="report-products-missing" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 12px 16px;">
+                        <div style="font-weight: 600; color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-warning); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">?</span>
+                            <span>Missing Products (Not in Tally Stock): <strong id="count-products-missing">0</strong></span>
+                        </div>
+                        <p id="list-products-missing" style="font-size: 0.8rem; color: var(--accent-warning); line-height: 1.4; word-break: break-all;"></p>
+                    </div>
+                </div>
+
+                <!-- LEDGER CONFIGURATION FOR VOUCHERS -->
+                <div id="ledger-config-container" style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Voucher Ledger Accounts</h3>
+
+                    <div>
+                        <label for="xml_company_name" style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name for XML Import:</label>
+                        <input type="text" id="xml_company_name" placeholder="Enter the exact Tally company name" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">This exact name is written into the XML import target. It is pre-filled from the synced company.</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Sales Ledger Account:</label>
+                            <input type="text" id="sales_ledger_select" placeholder="Enter Sales Ledger (e.g. Goods Sales)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Misc / Round-off Ledger Account:</label>
+                            <div class="select-wrapper">
+                                <select id="misc_ledger_select">
+                                    <option value="">-- Choose Misc Ledger --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DETECTED TAX RATES CONFIGURATION -->
+                <div id="detected-tax-rates-container" style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px; display: none; flex-direction: column; gap: 15px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Detected Tax Types &amp; Rates Mapping</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px;">
+                        Select the corresponding Tally ledger for each detected tax type and rate:
+                    </p>
+                    <div id="tax-rates-mapping-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
+                        <!-- Dynamic dropdowns injected by JS -->
+                    </div>
+                </div>
+
+                <!-- ACTION BUTTONS -->
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <button class="btn" id="btn-create-tally-ledgers" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-warning), #d97706); display: none;">
+                        <span>Create Party Names Ledgers in Tally</span>
+                        <div class="loader" id="create-ledgers-loader"></div>
+                    </button>
+                    
+                    <button class="btn" id="btn-create-tally-items" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: none;">
+                        <span>Create Stock Items in Tally</span>
+                        <div class="loader" id="create-items-btn-loader"></div>
+                    </button>
+                    
+                    <button class="btn" id="btn-generate-xml" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-success), #0d9488);">
+                        <span>Generate Sales Register XML</span>
+                        <div class="loader" id="generate-xml-loader"></div>
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
+                    <button class="btn" id="btn-generate-excel" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, #4f46e5, #4338ca);">
+                        <span>Generate Processed Excel</span>
+                        <div class="loader" id="generate-excel-loader"></div>
+                    </button>
+                </div>
+
+                <!-- SUCCESS REGION -->
+                <div id="success-container" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 20px; margin-top: 20px; text-align: center; flex-direction: column; align-items: center; gap: 15px;">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">Vouchers XML Generated!</h3>
+                    <a id="download-link" href="#" class="btn" style="width: 100%; background: linear-gradient(135deg, var(--accent-success), #059669);">
+                        Download Sales Register XML
+                    </a>
+                </div>
+
+                <!-- EXCEL SUCCESS REGION -->
+                <div id="excel-success-container" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 20px; margin-top: 20px; text-align: center; flex-direction: column; align-items: center; gap: 15px;">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #4f46e5;">Processed Excel Generated!</h3>
+                    <a id="excel-download-link" href="#" class="btn" style="width: 100%; background: linear-gradient(135deg, #4f46e5, #4338ca);">
+                        Download Processed Excel
+                    </a>
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- MODAL POPUPS FOR TALLY SYNC -->
+    <!-- Modal for Sync Ledgers -->
+    <div id="sync-ledgers-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Sync Ledgers from Tally Prime</h2>
+          <span class="modal-close-x" id="close-ledgers-modal-x">&times;</span>
         </div>
+        <div class="modal-body">
+          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer with your client company open.</p>
+          <div class="form-group">
+            <label for="sync_ledger_company_name">Company Name:</label>
+            <input type="text" id="sync_ledger_company_name" placeholder="Enter the exact company name saved in Tally...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="close-modal-btn" id="close-ledgers-modal-btn">Close</button>
+          <button class="start-sync-btn" id="btn-sync-ledgers-action">
+             <span>Start Sync</span>
+             <div class="loader" id="ledgers-loader" style="margin-left: 8px;"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for Sync Stock Items -->
+    <div id="sync-stock-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Sync Stock Items from Tally Prime</h2>
+          <span class="modal-close-x" id="close-stock-modal-x">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer with your client company open.</p>
+          <div class="form-group">
+            <label for="sync_stock_company_name">Company Name:</label>
+            <input type="text" id="sync_stock_company_name" placeholder="Enter the exact company name saved in Tally...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="close-modal-btn" id="close-stock-modal-btn">Close</button>
+          <button class="start-sync-btn" id="btn-sync-stock-action">
+             <span>Start Sync</span>
+             <div class="loader" id="stock-loader" style="margin-left: 8px;"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for Creating Missing Stock Items -->
+    <div id="create-stock-items-modal" class="modal">
+      <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+          <h2>Create Missing Stock Items in Tally</h2>
+          <span class="modal-close-x" id="close-create-items-modal-x">&times;</span>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
+          <p class="modal-instructions">These products were found in your Excel sheet but are missing from Tally's Item Stock.</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="new_item_under" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Stock Group (Under):</label>
+              <input type="text" id="new_item_under" value="Primary" placeholder="Enter stock group name (e.g. Primary)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label for="new_item_units" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Unit of Measure (Units):</label>
+              <input type="text" id="new_item_units" value="Nos" placeholder="Enter units (e.g. Nos, Pcs)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
+            </div>
+          </div>
+          
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="new_item_supply_type" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Type of Supply:</label>
+            <div class="select-wrapper">
+              <select id="new_item_supply_type" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
+                <option value="Goods">Goods</option>
+                <option value="Services">Services</option>
+                <option value="Capital Goods">Capital Goods</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: block; font-size: 0.85rem;">Items to be Created:</label>
+            <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(0,0,0,0.2);">
+              <ul id="missing-items-list-modal" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <!-- dynamic item list -->
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="close-modal-btn" id="close-create-items-modal-btn">Close</button>
+          <button class="start-sync-btn" id="btn-create-items-action" style="background: linear-gradient(135deg, var(--accent-success), #047857);" onclick="submitCreateStockItems()">
+             <span>Create Items</span>
+             <div class="loader" id="create-items-loader" style="margin-left: 8px;"></div>
+          </button>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -300,6 +518,7 @@
             // Upload the file to server
             uploadFile(file);
         }
+
         function resetFile() {
             excelInput.value = "";
             tempFileId = "";
@@ -308,7 +527,10 @@
             document.getElementById("file-info-container").style.display = "none";
             document.getElementById("sheet-select-container").style.display = "none";
             document.getElementById("card-mapping").style.display = "none";
+            document.getElementById("card-tally").style.display = "none";
+            document.getElementById("card-generate").style.display = "none";
             document.getElementById("success-container").style.display = "none";
+            document.getElementById("excel-success-container").style.display = "none";
             document.getElementById("sheet_select").innerHTML = '<option value="">-- Choose a sheet --</option>';
             hideStatus("upload-status");
             hideStatus("sheet-status");
@@ -358,25 +580,38 @@
             }
         }
 
-        // Sheet select change handler
+        // Sheet select and Header Row change handlers
         document.getElementById("sheet_select").addEventListener("change", (e) => {
             const sheet = e.target.value;
             if (sheet) {
                 analyzeSheet(sheet);
             } else {
                 document.getElementById("card-mapping").style.display = "none";
+                document.getElementById("card-tally").style.display = "none";
+                document.getElementById("card-generate").style.display = "none";
+            }
+        });
+
+        document.getElementById("header_row").addEventListener("change", () => {
+            const sheet = document.getElementById("sheet_select").value;
+            if (sheet) {
+                analyzeSheet(sheet);
             }
         });
 
         async function analyzeSheet(sheet) {
-            showStatus("sheet-status", "sheet-loader", "Analyzing sheet headers...", "info");
+            const rowVal = document.getElementById("header_row").value || 1;
+            showStatus("sheet-status", "sheet-loader", `Analyzing sheet headers (Row ${rowVal})...`, "info");
+            
             document.getElementById("card-mapping").style.display = "none";
+            document.getElementById("card-tally").style.display = "none";
+            document.getElementById("card-generate").style.display = "none";
 
             try {
                 const res = await fetch("/get-headers", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ file_id: tempFileId, sheet_name: sheet })
+                    body: JSON.stringify({ file_id: tempFileId, sheet_name: sheet, header_row: rowVal })
                 });
                 const data = await res.json();
 
@@ -385,7 +620,11 @@
                     buildMappingGrid(data.headers);
                     triggerAutoMatch();
                     hideStatus("sheet-status");
+                    
+                    // Show all subsequent steps now that Excel file has headers loaded
                     document.getElementById("card-mapping").style.display = "block";
+                    document.getElementById("card-tally").style.display = "block";
+                    document.getElementById("card-generate").style.display = "block";
                 } else {
                     showStatus("sheet-status", null, `❌ Failed to read headers: ${data.error}`, "error");
                 }
@@ -442,26 +681,17 @@
                 const selectContainer = document.createElement("div");
                 selectContainer.className = "mapping-select-container";
 
-                const dot = document.createElement("div");
-                dot.className = "mapping-status";
+                const statusIndicator = document.createElement("div");
+                statusIndicator.className = "mapping-status";
+                statusIndicator.id = `status-dot-${field.id.replace(/\s+/g, "_")}`;
 
-                const selWrapper = document.createElement("div");
-                selWrapper.className = "select-wrapper";
-                selWrapper.style.flex = "1";
+                const wrapper = document.createElement("div");
+                wrapper.className = "select-wrapper";
 
                 const select = document.createElement("select");
-                select.className = "mapping-dropdown";
                 select.id = `select-${field.id.replace(/\s+/g, "_")}`;
-                select.setAttribute("data-target", field.id);
-                select.addEventListener("change", handleMappingChange);
+                select.innerHTML = '<option value="">-- Unmapped --</option>';
 
-                // Default empty option
-                const defaultOpt = document.createElement("option");
-                defaultOpt.value = "";
-                defaultOpt.innerText = "-- Select Source Header --";
-                select.appendChild(defaultOpt);
-
-                // Add source headers
                 headers.forEach(h => {
                     const opt = document.createElement("option");
                     opt.value = h;
@@ -469,9 +699,17 @@
                     select.appendChild(opt);
                 });
 
-                selWrapper.appendChild(select);
-                selectContainer.appendChild(dot);
-                selectContainer.appendChild(selWrapper);
+                select.addEventListener("change", (e) => {
+                    updateMappingRowStatus(field.id, e.target.value);
+                    if (field.id === "Invoice Date") {
+                        updateDateSlicerLimits();
+                    }
+                    detectAndRenderTaxRates();
+                });
+
+                wrapper.appendChild(select);
+                selectContainer.appendChild(statusIndicator);
+                selectContainer.appendChild(wrapper);
 
                 row.appendChild(labelDiv);
                 row.appendChild(selectContainer);
@@ -479,94 +717,320 @@
             });
         }
 
-        // Handle dropdown value changes
-        function handleMappingChange(e) {
-            const dropdown = e.target;
-            const targetField = dropdown.getAttribute("data-target");
-            const row = document.getElementById(`row-${targetField.replace(/\s+/g, "_")}`);
-            const autoInd = document.getElementById(`auto-match-ind-${targetField.replace(/\s+/g, "_")}`);
-
-            // Remove auto-mapped flag if user manually changed it
-            if (autoInd) {
-                autoInd.style.display = "none";
-            }
-
-            if (dropdown.value) {
+        function updateMappingRowStatus(fieldId, value) {
+            const cleanId = fieldId.replace(/\s+/g, "_");
+            const row = document.getElementById(`row-${cleanId}`);
+            const dot = document.getElementById(`status-dot-${cleanId}`);
+            
+            if (value) {
                 row.classList.add("mapped");
             } else {
                 row.classList.remove("mapped");
             }
-
-            validateMappingForm();
         }
 
-        // Auto match source headers based on fuzzy lists
+        // Auto match columns based on keywords
         function triggerAutoMatch() {
             targetFields.forEach(field => {
-                const matchPatterns = autoMatches[field.id] || [];
-                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
-                const row = document.getElementById(`row-${field.id.replace(/\s+/g, "_")}`);
-                const autoInd = document.getElementById(`auto-match-ind-${field.id.replace(/\s+/g, "_")}`);
-
-                if (!dropdown) return;
-
-                // Reset state
-                dropdown.value = "";
-                row.classList.remove("mapped");
-                autoInd.style.display = "none";
-
-                // Scan options for matches
-                for (let i = 0; i < dropdown.options.length; i++) {
-                    const optionVal = dropdown.options[i].value;
-                    if (!optionVal) continue;
-
-                    const cleanVal = optionVal.toLowerCase().trim();
-
-                    // Check direct match or contains word matches
-                    let foundMatch = matchPatterns.some(p => {
-                        const cleanPattern = p.toLowerCase();
-                        return cleanVal === cleanPattern || 
-                               cleanVal.includes(cleanPattern) || 
-                               cleanPattern === optionVal.toLowerCase().trim();
-                    });
-
-                    if (foundMatch) {
-                        dropdown.value = optionVal;
-                        row.classList.add("mapped");
-                        autoInd.style.display = "flex";
+                const cleanId = field.id.replace(/\s+/g, "_");
+                const select = document.getElementById(`select-${cleanId}`);
+                const matchTerms = autoMatches[field.id] || [];
+                
+                let matchedHeader = "";
+                for (let h of excelHeaders) {
+                    const hNorm = h.toLowerCase().trim();
+                    if (matchTerms.some(term => hNorm === term || hNorm.includes(term))) {
+                        matchedHeader = h;
                         break;
                     }
                 }
-            });
 
-            validateMappingForm();
-        }
-
-        // Validate mapping form - checking required fields
-        function validateMappingForm() {
-            let allRequiredMapped = true;
-            
-            targetFields.forEach(field => {
-                if (field.required) {
-                    const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
-                    if (!dropdown || !dropdown.value) {
-                        allRequiredMapped = false;
+                const autoInd = document.getElementById(`auto-match-ind-${cleanId}`);
+                if (matchedHeader) {
+                    select.value = matchedHeader;
+                    updateMappingRowStatus(field.id, matchedHeader);
+                    autoInd.style.display = "flex";
+                    if (field.id === "Invoice Date") {
+                        updateDateSlicerLimits();
                     }
+                } else {
+                    autoInd.style.display = "none";
                 }
             });
-
-            document.getElementById("btn-check-parties").disabled = !allRequiredMapped;
-            hideStatus("mapping-status");
+            
+            // Trigger dynamic tax rate scanning
+            detectAndRenderTaxRates();
         }
 
-        // DOM Loaded event to initialize Tally info
+        async function updateDateSlicerLimits() {
+            const sheet = document.getElementById("sheet_select").value;
+            const dateCol = document.getElementById("select-Invoice_Date").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            const container = document.getElementById("date-slicer-container");
+            const fromInput = document.getElementById("filter-from-date");
+            const toInput = document.getElementById("filter-to-date");
+
+            if (!tempFileId || !sheet || !dateCol) {
+                if (container) container.style.display = "none";
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/get-date-range", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        date_col: dateCol,
+                        header_row: rowVal
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success && data.min_date && data.max_date) {
+                    fromInput.value = data.min_date;
+                    toInput.value = data.max_date;
+                    fromInput.min = data.min_date;
+                    fromInput.max = data.max_date;
+                    toInput.min = data.min_date;
+                    toInput.max = data.max_date;
+                    if (container) container.style.display = "block";
+                } else {
+                    if (container) container.style.display = "none";
+                }
+            } catch (err) {
+                console.error("Failed to fetch date range limits:", err);
+                if (container) container.style.display = "none";
+            }
+        }
+
+        // DOM Loaded event to initialize modals and load Tally companies
         document.addEventListener("DOMContentLoaded", () => {
             loadSyncedCompanies();
             
-            // Sync buttons click handlers
-            document.getElementById("btn-sync-ledgers").addEventListener("click", () => syncTally("ledgers"));
-            document.getElementById("btn-sync-stock").addEventListener("click", () => syncTally("stock"));
+            // Modal Elements
+            const ledgersModal = document.getElementById("sync-ledgers-modal");
+            const stockModal = document.getElementById("sync-stock-modal");
+            const createItemsModal = document.getElementById("create-stock-items-modal");
+            
+            // Modal Open Triggers
+            document.getElementById("btn-open-sync-ledgers-modal").addEventListener("click", () => {
+                ledgersModal.style.display = "block";
+            });
+            document.getElementById("btn-open-sync-stock-modal").addEventListener("click", () => {
+                stockModal.style.display = "block";
+            });
+            
+            // Modal Close Triggers (Ledgers)
+            document.getElementById("close-ledgers-modal-x").addEventListener("click", () => ledgersModal.style.display = "none");
+            document.getElementById("close-ledgers-modal-btn").addEventListener("click", () => ledgersModal.style.display = "none");
+            
+            // Modal Close Triggers (Stock)
+            document.getElementById("close-stock-modal-x").addEventListener("click", () => stockModal.style.display = "none");
+            document.getElementById("close-stock-modal-btn").addEventListener("click", () => stockModal.style.display = "none");
+
+            // Modal Close Triggers (Create Stock Items)
+            document.getElementById("close-create-items-modal-x").addEventListener("click", () => createItemsModal.style.display = "none");
+            document.getElementById("close-create-items-modal-btn").addEventListener("click", () => createItemsModal.style.display = "none");
+            
+            // Sync action buttons click handlers
+            document.getElementById("btn-sync-ledgers-action").addEventListener("click", () => syncTally("ledgers"));
+            document.getElementById("btn-sync-stock-action").addEventListener("click", () => syncTally("stock"));
+            
+            // Create missing ledgers & items click handlers
+            document.getElementById("btn-create-tally-ledgers").addEventListener("click", () => createTallyLedgers());
+            document.getElementById("btn-create-tally-items").addEventListener("click", () => openCreateItemsModal());
+            document.getElementById("btn-generate-xml").addEventListener("click", () => generateSalesXML());
+            document.getElementById("btn-generate-excel").addEventListener("click", () => generateProcessedExcel());
+
+            document.getElementById("tally_ledger_company_select").addEventListener("change", (e) => {
+                loadLedgersForVoucherConfig(e.target.value);
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener("click", (e) => {
+                if (e.target === ledgersModal) ledgersModal.style.display = "none";
+                if (e.target === stockModal) stockModal.style.display = "none";
+                if (e.target === createItemsModal) createItemsModal.style.display = "none";
+            });
         });
+
+        let tallyLedgerList = [];
+        let detectedTaxKeys = [];
+
+        async function loadLedgersForVoucherConfig(companyName) {
+            const salesInput = document.getElementById("sales_ledger_select");
+            const miscSelect = document.getElementById("misc_ledger_select");
+            const xmlCompanyInput = document.getElementById("xml_company_name");
+            
+            miscSelect.innerHTML = '<option value="">-- Choose Misc Ledger --</option>';
+            tallyLedgerList = [];
+            
+            if (!companyName) return;
+            xmlCompanyInput.value = companyName;
+            
+            try {
+                const res = await fetch("/api/tally/ledgers", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ company_name: companyName })
+                });
+                const data = await res.json();
+                
+                if (data.success && data.ledgers) {
+                    tallyLedgerList = data.ledgers;
+                    let defaultSales = "";
+                    let defaultMisc = "";
+                    
+                    data.ledgers.forEach(ledger => {
+                        const optMisc = document.createElement("option");
+                        optMisc.value = ledger;
+                        optMisc.innerText = ledger;
+                        miscSelect.appendChild(optMisc);
+                        
+                        const lowerLedger = ledger.toLowerCase();
+                        if (!defaultSales && lowerLedger.includes("sales") && (lowerLedger.includes("goods") || lowerLedger.includes("goods sales") || lowerLedger.includes("sales goods"))) {
+                            defaultSales = ledger;
+                        } else if (!defaultSales && lowerLedger.includes("sales")) {
+                            defaultSales = ledger;
+                        }
+                        
+                        if (!defaultMisc && (lowerLedger.includes("misc") || lowerLedger.includes("round") || lowerLedger.includes("conversion"))) {
+                            defaultMisc = ledger;
+                        }
+                    });
+                    
+                    if (defaultSales) salesInput.value = defaultSales;
+                    if (defaultMisc) miscSelect.value = defaultMisc;
+                    
+                    // Trigger dynamic tax rate scanning
+                    detectAndRenderTaxRates();
+                }
+            } catch (err) {
+                console.error("Failed to load ledgers for voucher config dropdowns:", err);
+            }
+        }
+
+        async function detectAndRenderTaxRates() {
+            const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            const container = document.getElementById("detected-tax-rates-container");
+            const listDiv = document.getElementById("tax-rates-mapping-list");
+            
+            if (!tempFileId || !sheet) {
+                container.style.display = "none";
+                return;
+            }
+            
+            // Collect current mappings
+            const mappings = {};
+            let hasTaxes = false;
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                    if (field.id.includes("CGST") || field.id.includes("SGST") || field.id.includes("IGST")) {
+                        hasTaxes = true;
+                    }
+                }
+            });
+            
+            if (!hasTaxes || !mappings["Taxable Amount"]) {
+                container.style.display = "none";
+                return;
+            }
+            
+            try {
+                const res = await fetch("/api/detect-tax-rates", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        header_row: rowVal
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success && data.tax_keys && data.tax_keys.length > 0) {
+                    detectedTaxKeys = data.tax_keys;
+                    container.style.display = "flex";
+                    
+                    // Render the dropdowns
+                    listDiv.innerHTML = "";
+                    data.tax_keys.forEach(key => {
+                        const colDiv = document.createElement("div");
+                        colDiv.style.display = "flex";
+                        colDiv.style.flexDirection = "column";
+                        colDiv.style.gap = "6px";
+                        colDiv.style.minWidth = "200px";
+                        colDiv.style.flex = "1";
+                        
+                        const label = document.createElement("label");
+                        label.style.fontSize = "0.85rem";
+                        label.style.fontWeight = "600";
+                        label.style.color = "var(--text-muted)";
+                        label.innerText = `${key}:`;
+                        
+                        const wrapper = document.createElement("div");
+                        wrapper.className = "select-wrapper";
+                        
+                        const select = document.createElement("select");
+                        select.className = "tax-rate-mapping-dropdown";
+                        select.setAttribute("data-tax-key", key);
+                        select.innerHTML = '<option value="">-- Choose Ledger --</option>';
+                        
+                        // Populate with synced Tally ledgers
+                        tallyLedgerList.forEach(ledger => {
+                            const opt = document.createElement("option");
+                            opt.value = ledger;
+                            opt.innerText = ledger;
+                            select.appendChild(opt);
+                        });
+                        
+                        // Smart auto-select
+                        const keyLower = key.toLowerCase();
+                        let foundMatch = "";
+                        
+                        const matchType = keyLower.split(" ")[0]; // 'cgst', 'sgst', 'igst'
+                        const matchRateStr = keyLower.split(" ").pop().replace("%", ""); // '9', '14', etc.
+                        
+                        for (let l of tallyLedgerList) {
+                            const lLower = l.toLowerCase();
+                            if (lLower.includes(matchType) && (lLower.includes(`${matchRateStr}%`) || lLower.includes(` ${matchRateStr}`))) {
+                                foundMatch = l;
+                                break;
+                            }
+                        }
+                        
+                        if (!foundMatch) {
+                            for (let l of tallyLedgerList) {
+                                if (l.toLowerCase().includes(matchType)) {
+                                    foundMatch = l;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (foundMatch) {
+                            select.value = foundMatch;
+                        }
+                        
+                        wrapper.appendChild(select);
+                        colDiv.appendChild(label);
+                        colDiv.appendChild(wrapper);
+                        listDiv.appendChild(colDiv);
+                    });
+                } else {
+                    container.style.display = "none";
+                }
+            } catch (err) {
+                console.error("Error detecting tax rates:", err);
+                container.style.display = "none";
+            }
+        }
 
         async function loadSyncedCompanies() {
             try {
@@ -599,6 +1063,10 @@
                     
                     if (currentLedger) ledgerSelect.value = currentLedger;
                     if (currentStock) stockSelect.value = currentStock;
+                    
+                    if (ledgerSelect.value) {
+                        loadLedgersForVoucherConfig(ledgerSelect.value);
+                    }
                 }
             } catch (err) {
                 console.error("Failed to load synced companies:", err);
@@ -606,63 +1074,67 @@
         }
 
         async function syncTally(type) {
-            const inputId = type === "ledgers" ? "new_ledger_company_name" : "new_stock_company_name";
+            const modalId = type === "ledgers" ? "sync-ledgers-modal" : "sync-stock-modal";
+            const inputId = type === "ledgers" ? "sync_ledger_company_name" : "sync_stock_company_name";
             const selectId = type === "ledgers" ? "tally_ledger_company_select" : "tally_stock_company_select";
             
             const newCoInput = document.getElementById(inputId);
             const companyName = newCoInput.value.trim();
-            const selectVal = document.getElementById(selectId).value;
             
-            const activeCompany = companyName || selectVal;
-            
-            const btnLedger = document.getElementById("btn-sync-ledgers");
-            const btnStock = document.getElementById("btn-sync-stock");
-            
-            if (!activeCompany) {
-                alert("Please select a company or enter a Company Name to sync.");
+            if (!companyName) {
+                alert("Please enter the Company Name exactly as saved in Tally.");
                 return;
             }
             
-            btnLedger.disabled = true;
-            btnStock.disabled = true;
+            const startSyncBtn = type === "ledgers" ? document.getElementById("btn-sync-ledgers-action") : document.getElementById("btn-sync-stock-action");
+            startSyncBtn.disabled = true;
             
             const apiEndpoint = type === "ledgers" ? "/api/tally/sync" : "/api/tally/sync-stock";
             const typeLabel = type === "ledgers" ? "accounting ledgers" : "inventory stock items";
             const loaderId = type === "ledgers" ? "ledgers-loader" : "stock-loader";
             
-            showStatus("tally-sync-status", loaderId, `Connecting to Tally on port 9000 to sync ${typeLabel} for '${activeCompany}'...`, "info");
+            const statusDiv = document.getElementById("tally-sync-status");
+            showStatus("tally-sync-status", loaderId, `Connecting to Tally on port 9000 to sync ${typeLabel} for '${companyName}'...`, "info");
             
             try {
                 const res = await fetch(apiEndpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ company_name: activeCompany })
+                    body: JSON.stringify({ company_name: companyName })
                 });
                 const data = await res.json();
                 
                 if (data.success) {
                     showStatus("tally-sync-status", null, `✓ Successfully synced ${data.count} ${typeLabel} for '${data.company_name}'!`, "success");
                     newCoInput.value = "";
+                    
+                    // Close the modal
+                    document.getElementById(modalId).style.display = "none";
+                    
                     await loadSyncedCompanies();
                     
                     // Auto select the synced company
                     document.getElementById(selectId).value = data.company_name;
+                    if (type === "ledgers") {
+                        loadLedgersForVoucherConfig(data.company_name);
+                    }
                 } else {
                     showStatus("tally-sync-status", null, `❌ Sync failed: ${data.error}`, "error");
                 }
             } catch (err) {
                 showStatus("tally-sync-status", null, `❌ Network error: ${err.message}`, "error");
             } finally {
-                btnLedger.disabled = false;
-                btnStock.disabled = false;
+                startSyncBtn.disabled = false;
             }
         }
 
         let lastNonExistingParties = [];
+        let lastNonExistingProducts = [];
 
         // Check Party Names matching report
         async function checkPartyNames() {
             const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
             if (!tempFileId) {
                 showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
                 return;
@@ -700,6 +1172,9 @@
             document.getElementById("btn-check-parties").disabled = true;
             document.getElementById("party-check-results-container").style.display = "none";
 
+            const fromDate = document.getElementById("filter-from-date").value;
+            const toDate = document.getElementById("filter-to-date").value;
+
             try {
                 const res = await fetch("/api/check-parties", {
                     method: "POST",
@@ -708,7 +1183,10 @@
                         file_id: tempFileId,
                         sheet_name: sheet,
                         mappings: mappings,
-                        ledger_company: ledgerCo
+                        ledger_company: ledgerCo,
+                        from_date: fromDate,
+                        to_date: toDate,
+                        header_row: rowVal
                     })
                 });
                 
@@ -742,7 +1220,7 @@
                             div.style.padding = "4px 0";
                             div.innerHTML = `
                                 <span>Original: <strong>${item.original}</strong> &rarr; Tally Match: <strong style="color: var(--accent-primary);">${item.matched}</strong></span>
-                                <span class="badge" style="background: rgba(79, 70, 229, 0.12); color: var(--accent-primary); border: 1px solid rgba(79, 70, 229, 0.25);">${item.score}% match</span>
+                                <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">${item.score}% match</span>
                             `;
                             listSim.appendChild(div);
                         });
@@ -766,7 +1244,7 @@
                                 <td style="padding: 6px 8px;">${item.state}</td>
                                 <td style="padding: 6px 8px; font-family: monospace;">${item.gstin || '-'}</td>
                                 <td style="padding: 6px 8px;">
-                                    <span class="badge" style="${item.gstin ? 'background: rgba(13, 148, 136, 0.1); color: #0d9488; border: 1px solid #0d9488;' : 'background: rgba(217, 119, 6, 0.1); color: #d97706; border: 1px solid #d97706;'}">
+                                    <span class="badge" style="${item.gstin ? 'background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid #f59e0b;'}">
                                         ${item.gstin ? 'Regular' : 'Unregistered'}
                                     </span>
                                 </td>
@@ -778,6 +1256,7 @@
                         // Show create button
                         const createBtn = document.getElementById("btn-create-tally-ledgers");
                         createBtn.style.display = "block";
+                        createBtn.disabled = false;
                         createBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Party Ledgers in Tally`;
                     } else {
                         document.getElementById("report-missing").style.display = "none";
@@ -790,6 +1269,108 @@
                 showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
             } finally {
                 document.getElementById("btn-check-parties").disabled = false;
+            }
+        }
+
+        // Check Product Names matching report
+        async function checkProductNames() {
+            const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            if (!tempFileId) {
+                showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
+                return;
+            }
+            if (!sheet) {
+                showStatus("mapping-status", null, "⚠️ Please select a worksheet sheet first.", "error");
+                return;
+            }
+
+            const mappings = {};
+            let mappingValid = true;
+
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                } else if (field.required) {
+                    mappingValid = false;
+                }
+            });
+
+            if (!mappingValid) {
+                showStatus("mapping-status", null, "⚠️ Please map all required columns before checking.", "error");
+                return;
+            }
+
+            const stockCo = document.getElementById("tally_stock_company_select").value;
+            if (!stockCo) {
+                showStatus("mapping-status", null, "⚠️ Please select/sync a Tally Stock Company. This is required for product checking.", "error");
+                return;
+            }
+
+            showStatus("mapping-status", "check-products-loader", "Checking product names against Tally stock items...", "info");
+            document.getElementById("btn-check-products").disabled = true;
+            document.getElementById("product-check-results-container").style.display = "none";
+
+            const fromDate = document.getElementById("filter-from-date").value;
+            const toDate = document.getElementById("filter-to-date").value;
+
+            try {
+                const res = await fetch("/api/check-products", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        stock_company: stockCo,
+                        from_date: fromDate,
+                        to_date: toDate,
+                        header_row: rowVal
+                    })
+                });
+                
+                const data = await res.json();
+
+                if (data.success) {
+                    hideStatus("mapping-status");
+                    document.getElementById("product-check-results-container").style.display = "flex";
+
+                    // 1. Perfect matches
+                    document.getElementById("count-products-perfect").innerText = data.perfect_matches.length;
+                    const listPerf = document.getElementById("list-products-perfect");
+                    if (data.perfect_matches.length > 0) {
+                        listPerf.innerText = data.perfect_matches.join(", ");
+                        document.getElementById("report-products-perfect").style.display = "block";
+                    } else {
+                        listPerf.innerText = "No exact matches found.";
+                        document.getElementById("report-products-perfect").style.display = "none";
+                    }
+
+                    // 2. Missing
+                    document.getElementById("count-products-missing").innerText = data.non_existing.length;
+                    const listMiss = document.getElementById("list-products-missing");
+                    lastNonExistingProducts = data.non_existing;
+
+                    if (data.non_existing.length > 0) {
+                        listMiss.innerText = data.non_existing.join(", ");
+                        document.getElementById("report-products-missing").style.display = "block";
+                        
+                        const createItemsBtn = document.getElementById("btn-create-tally-items");
+                        createItemsBtn.style.display = "block";
+                        createItemsBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Stock Items in Tally`;
+                    } else {
+                        listMiss.innerText = "No missing products found.";
+                        document.getElementById("report-products-missing").style.display = "none";
+                        document.getElementById("btn-create-tally-items").style.display = "none";
+                    }
+                } else {
+                    showStatus("mapping-status", null, `❌ Verification failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+            } finally {
+                document.getElementById("btn-check-products").disabled = false;
             }
         }
 
@@ -807,7 +1388,7 @@
 
             const btn = document.getElementById("btn-create-tally-ledgers");
             btn.disabled = true;
-            showStatus("mapping-status", "create-ledgers-loader", `Connecting to Tally on port 9000 to create ${lastNonExistingParties.length} ledgers in '${ledgerCo}'...`, "info");
+            showStatus("mapping-status", "create-ledgers-loader", `Importing ${lastNonExistingParties.length} missing party ledgers to Tally Prime...`, "info");
 
             try {
                 const res = await fetch("/api/tally/create-missing-ledgers", {
@@ -821,13 +1402,203 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    showStatus("mapping-status", null, `✓ Successfully created ${data.created_count} ledgers in Tally!`, "success");
-                    await loadSyncedCompanies();
+                    showStatus("mapping-status", null, `✓ Successfully created ${lastNonExistingParties.length} ledgers in Tally and updated local cache!`, "success");
+                    btn.style.display = "none";
+                    lastNonExistingParties = [];
                     
-                    // Re-run check party names to update matches list!
+                    // Reload synced companies to update counts, then select active company
+                    await loadSyncedCompanies();
+                    document.getElementById("tally_ledger_company_select").value = ledgerCo;
+                    await loadLedgersForVoucherConfig(ledgerCo);
+                    
+                    // Re-run checkPartyNames to confirm they now show as green / matched
                     await checkPartyNames();
                 } else {
-                    showStatus("mapping-status", null, `❌ Creation failed: ${data.error}`, "error");
+                    showStatus("mapping-status", null, `❌ Failed to create ledgers: ${data.error}`, "error");
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+                btn.disabled = false;
+            }
+        }
+
+        function openCreateItemsModal() {
+            const stockCo = document.getElementById("tally_stock_company_select").value;
+            if (!stockCo) {
+                alert("Please select a Tally Stock Company first.");
+                return;
+            }
+            if (!lastNonExistingProducts || lastNonExistingProducts.length === 0) {
+                alert("No missing products to create.");
+                return;
+            }
+
+            const listDiv = document.getElementById("missing-items-list-modal");
+            listDiv.innerHTML = "";
+            lastNonExistingProducts.forEach(prod => {
+                const li = document.createElement("li");
+                li.style.display = "flex";
+                li.style.justifyContent = "space-between";
+                li.style.background = "rgba(255, 255, 255, 0.05)";
+                li.style.padding = "6px 10px";
+                li.style.borderRadius = "4px";
+                li.style.fontSize = "0.85rem";
+                li.style.color = "var(--text-main)";
+                li.innerText = prod;
+                listDiv.appendChild(li);
+            });
+
+            document.getElementById("create-stock-items-modal").style.display = "block";
+        }
+
+        async function submitCreateStockItems() {
+            const stockCo = document.getElementById("tally_stock_company_select").value;
+            const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            const under = document.getElementById("new_item_under").value.trim();
+            const units = document.getElementById("new_item_units").value.trim();
+            const supplyType = document.getElementById("new_item_supply_type").value;
+
+            // Collect mappings
+            const mappings = {};
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                }
+            });
+
+            const loader = document.getElementById("create-items-loader");
+            const btnLoader = document.getElementById("create-items-btn-loader");
+            const createBtn = document.getElementById("btn-create-items-action");
+            const openBtn = document.getElementById("btn-create-tally-items");
+
+            loader.style.display = "inline-block";
+            if (btnLoader) btnLoader.style.display = "inline-block";
+            createBtn.disabled = true;
+            openBtn.disabled = true;
+
+            try {
+                const res = await fetch("/api/tally/create-missing-items", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        header_row: rowVal,
+                        company_name: stockCo,
+                        under: under,
+                        units: units,
+                        supply_type: supplyType,
+                        products: lastNonExistingProducts
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById("create-stock-items-modal").style.display = "none";
+                    lastNonExistingProducts = [];
+                    openBtn.style.display = "none";
+                    await checkProductNames();
+                    const ignoredText = data.ignored_count ? ` (${data.ignored_count} ignored by Tally)` : "";
+                    alert(`Successfully created/updated ${data.created_count} Stock Items in Tally!${ignoredText}`);
+                } else {
+                    alert(`Failed to create stock items: ${data.error}`);
+                }
+            } catch (err) {
+                console.error("Error creating stock items:", err);
+                alert(`Error creating stock items: ${err.message}`);
+            } finally {
+                loader.style.display = "none";
+                if (btnLoader) btnLoader.style.display = "none";
+                createBtn.disabled = false;
+                openBtn.disabled = false;
+            }
+        }
+
+        async function generateSalesXML() {
+            if (lastNonExistingParties && lastNonExistingParties.length > 0) {
+                showStatus("mapping-status", null, "⚠️ Cannot generate XML: You have non-existing party names. Please create them in Tally first.", "error");
+                return;
+            }
+            if (lastNonExistingProducts && lastNonExistingProducts.length > 0) {
+                showStatus("mapping-status", null, "⚠️ Cannot generate XML: You have missing products. Please add them to your Tally inventory first.", "error");
+                return;
+            }
+
+            const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            const mappings = {};
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                }
+            });
+
+            const ledgerCo = document.getElementById("tally_ledger_company_select").value;
+            const xmlCompanyName = document.getElementById("xml_company_name").value.trim();
+            const salesLedger = document.getElementById("sales_ledger_select").value;
+            const miscLedger = document.getElementById("misc_ledger_select").value;
+
+            if (!salesLedger) {
+                showStatus("mapping-status", null, "⚠️ Please select a Sales Ledger Account first.", "error");
+                return;
+            }
+            if (!xmlCompanyName) {
+                showStatus("mapping-status", null, "⚠️ Please enter the Tally Company Name for XML Import.", "error");
+                return;
+            }
+
+            const btn = document.getElementById("btn-generate-xml");
+            btn.disabled = true;
+            document.getElementById("success-container").style.display = "none";
+            document.getElementById("excel-success-container").style.display = "none";
+            showStatus("mapping-status", "generate-xml-loader", "Generating Sales Register XML Vouchers...", "info");
+
+            const fromDate = document.getElementById("filter-from-date").value;
+            const toDate = document.getElementById("filter-to-date").value;
+
+            // Collect user tax rate mappings
+            const taxLedgerMappings = {};
+            document.querySelectorAll(".tax-rate-mapping-dropdown").forEach(dropdown => {
+                const key = dropdown.getAttribute("data-tax-key");
+                if (dropdown.value) {
+                    taxLedgerMappings[key] = dropdown.value;
+                }
+            });
+
+            try {
+                const res = await fetch("/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        original_filename: originalFilename,
+                        ledger_company: ledgerCo,
+                        xml_company_name: xmlCompanyName,
+                        sales_ledger_name: salesLedger,
+                        misc_ledger_name: miscLedger,
+                        from_date: fromDate,
+                        to_date: toDate,
+                        header_row: rowVal,
+                        tax_ledger_mappings: taxLedgerMappings
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const downloadBtn = document.getElementById("download-link");
+                    downloadBtn.href = `/download/${data.filename}`;
+                    
+                    hideStatus("mapping-status");
+                    document.getElementById("success-container").style.display = "flex";
+                } else {
+                    showStatus("mapping-status", null, `❌ Generation failed: ${data.error}`, "error");
                 }
             } catch (err) {
                 showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
@@ -862,6 +1633,64 @@
 
         function hideStatus(elemId) {
             document.getElementById(elemId).style.display = "none";
+        }
+
+        async function generateProcessedExcel() {
+            const sheet = document.getElementById("sheet_select").value;
+            const rowVal = document.getElementById("header_row").value || 1;
+            const mappings = {};
+            targetFields.forEach(field => {
+                const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+                if (dropdown && dropdown.value) {
+                    mappings[field.id] = dropdown.value;
+                }
+            });
+
+            if (!tempFileId || !sheet) {
+                showStatus("mapping-status", null, "⚠️ Please upload a file and select a sheet first.", "error");
+                return;
+            }
+
+            document.getElementById("success-container").style.display = "none";
+            document.getElementById("excel-success-container").style.display = "none";
+
+            const btn = document.getElementById("btn-generate-excel");
+            btn.disabled = true;
+            showStatus("mapping-status", "generate-excel-loader", "Generating Processed Excel...", "info");
+
+            const fromDate = document.getElementById("filter-from-date").value;
+            const toDate = document.getElementById("filter-to-date").value;
+
+            try {
+                const res = await fetch("/generate_excel", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        file_id: tempFileId,
+                        sheet_name: sheet,
+                        mappings: mappings,
+                        original_filename: originalFilename,
+                        from_date: fromDate,
+                        to_date: toDate,
+                        header_row: rowVal
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const downloadBtn = document.getElementById("excel-download-link");
+                    downloadBtn.href = `/download/${data.filename}`;
+                    
+                    hideStatus("mapping-status");
+                    document.getElementById("excel-success-container").style.display = "flex";
+                } else {
+                    showStatus("mapping-status", null, `❌ Excel generation failed: ${data.error}`, "error");
+                }
+            } catch (err) {
+                showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+            }
         }
     </script>
 </body>

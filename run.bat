@@ -1,6 +1,6 @@
 @echo off
 echo ==============================================================
-echo  Excel Header Mapper & Register Generator Startup Script
+echo  Excel Header Mapper ^& Register Generator Startup Script
 echo ==============================================================
 echo.
 
