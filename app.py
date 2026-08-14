@@ -1547,23 +1547,7 @@ def generate():
             if narration_clean:
                 narration_text += f" Narration: {narration_clean}"
 
-            exact_credits_sum = total_taxable_amount + total_cgst_amount + total_sgst_amount + total_igst_amount
-            rounded_total = round(total_invoice_amount)
-            if rounded_total == 0:
-                rounded_total = round(exact_credits_sum)
-                
-            # Roundoff offset
-            roundoff_offset = round(rounded_total - exact_credits_sum, 2)
-            
-            # Party ledger entry: Debit (negative)
-            ledger_entries_xml = f"""
-            <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{tally_party}</LEDGERNAME>
-              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-              <AMOUNT>-{rounded_total:.2f}</AMOUNT>
-            </LEDGERENTRIES.LIST>"""
-            
-            # Tax ledger entries: Credit (positive)
+            # Group and calculate tax ledger entries first (credits)
             invoice_cgst_by_key = {}
             invoice_sgst_by_key = {}
             invoice_igst_by_key = {}
@@ -1591,6 +1575,29 @@ def generate():
                     key = f"IGST Output {rate}%"
                     invoice_igst_by_key[key] = invoice_igst_by_key.get(key, 0.0) + igst_amt
 
+            # Compute sum of tax ledgers rounded exactly as they will be written in the XML
+            cgst_ledgers_total = sum(round(amt, 2) for amt in invoice_cgst_by_key.values())
+            sgst_ledgers_total = sum(round(amt, 2) for amt in invoice_sgst_by_key.values())
+            igst_ledgers_total = sum(round(amt, 2) for amt in invoice_igst_by_key.values())
+
+            # Now calculate the exact credits sum and the rounded total for the invoice
+            exact_credits_sum = total_taxable_amount + cgst_ledgers_total + sgst_ledgers_total + igst_ledgers_total
+            rounded_total = round(total_invoice_amount)
+            if rounded_total == 0:
+                rounded_total = round(exact_credits_sum)
+                
+            # Roundoff offset
+            roundoff_offset = round(rounded_total - exact_credits_sum, 2)
+            
+            # Party ledger entry: Debit (negative)
+            ledger_entries_xml = f"""
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>{tally_party}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-{rounded_total:.2f}</AMOUNT>
+            </LEDGERENTRIES.LIST>"""
+            
+            # Generate XML strings for CGST, SGST, IGST with exact rounded amounts
             for key, amt in invoice_cgst_by_key.items():
                 if amt > 0:
                     ledger_name = tax_ledger_mappings.get(key, key)
@@ -1598,7 +1605,7 @@ def generate():
             <LEDGERENTRIES.LIST>
               <LEDGERNAME>{ledger_name}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-              <AMOUNT>{amt:.2f}</AMOUNT>
+              <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
 
             for key, amt in invoice_sgst_by_key.items():
@@ -1608,7 +1615,7 @@ def generate():
             <LEDGERENTRIES.LIST>
               <LEDGERNAME>{ledger_name}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-              <AMOUNT>{amt:.2f}</AMOUNT>
+              <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
 
             for key, amt in invoice_igst_by_key.items():
@@ -1618,7 +1625,7 @@ def generate():
             <LEDGERENTRIES.LIST>
               <LEDGERNAME>{ledger_name}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-              <AMOUNT>{amt:.2f}</AMOUNT>
+              <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
                 
             # Round-off ledger entry
@@ -1752,13 +1759,251 @@ def generate_excel():
         else:
             df_out["Rounded Total Amount"] = 0
 
-        # Save the processed DataFrame to Excel
+        # Save the processed DataFrame to Excel with two sheets
         base_name, _ = os.path.splitext(original_filename)
         processed_filename = f"{base_name}_processed.xlsx"
         processed_path = os.path.join(PROCESSED_FOLDER, processed_filename)
-        
-        # Output file to excel without pandas row index
-        df_out.to_excel(processed_path, index=False)
+
+        # Local helper (to_float is a nested fn in other routes, define it here too)
+        def to_float(val):
+            if val is None:
+                return 0.0
+            try:
+                return float(str(val).replace(",", "").strip())
+            except Exception:
+                return 0.0
+
+        with pd.ExcelWriter(processed_path, engine="xlsxwriter") as writer:
+            # ── Sheet 1: Processed Data (unchanged) ──────────────────────────
+            df_out.to_excel(writer, sheet_name="Processed Data", index=False)
+            wb  = writer.book
+            ws1 = writer.sheets["Processed Data"]
+
+            # Auto-fit column widths for Sheet 1
+            for col_idx, col_name in enumerate(df_out.columns):
+                try:
+                    col_max = df_out[col_name].astype(str).map(len).max() if len(df_out) > 0 else 0
+                    col_max = 0 if (col_max != col_max) else int(col_max)  # NaN check: nan != nan
+                    max_len = max(len(str(col_name)), col_max)
+                    ws1.set_column(col_idx, col_idx, min(max_len + 4, 40))
+                except Exception:
+                    ws1.set_column(col_idx, col_idx, 15)
+
+            # ── Sheet 2: Final Summary & Grouping ────────────────────────────
+            ws2 = wb.add_worksheet("Final Summary & Grouping")
+
+            # ---- Formats ----
+            fmt_title = wb.add_format({
+                "bold": True, "font_size": 14, "font_color": "#FFFFFF",
+                "bg_color": "#1A3C6E", "align": "center", "valign": "vcenter",
+                "border": 0
+            })
+            fmt_header = wb.add_format({
+                "bold": True, "font_size": 9, "font_color": "#FFFFFF",
+                "bg_color": "#2E6DA4", "align": "center", "valign": "vcenter",
+                "border": 1, "border_color": "#BFCFE7"
+            })
+            fmt_inv_group = wb.add_format({
+                "bold": True, "font_size": 9, "bg_color": "#E8F0FB",
+                "border": 1, "border_color": "#BFCFE7", "valign": "vcenter"
+            })
+            fmt_inv_group_num = wb.add_format({
+                "bold": True, "font_size": 9, "bg_color": "#E8F0FB",
+                "border": 1, "border_color": "#BFCFE7", "num_format": "#,##0.00",
+                "align": "right", "valign": "vcenter"
+            })
+            fmt_product = wb.add_format({
+                "font_size": 9, "bg_color": "#FFFFFF",
+                "border": 1, "border_color": "#D9E4F5", "valign": "vcenter"
+            })
+            fmt_product_num = wb.add_format({
+                "font_size": 9, "bg_color": "#FFFFFF",
+                "border": 1, "border_color": "#D9E4F5", "num_format": "#,##0.00",
+                "align": "right", "valign": "vcenter"
+            })
+            fmt_tax_label = wb.add_format({
+                "italic": True, "font_size": 9, "font_color": "#555555",
+                "bg_color": "#F5F8FF", "border": 1, "border_color": "#D9E4F5",
+                "align": "right", "valign": "vcenter"
+            })
+            fmt_tax_value = wb.add_format({
+                "italic": True, "font_size": 9, "font_color": "#555555",
+                "bg_color": "#F5F8FF", "border": 1, "border_color": "#D9E4F5",
+                "num_format": "#,##0.00", "align": "right", "valign": "vcenter"
+            })
+            fmt_subtotal_label = wb.add_format({
+                "bold": True, "font_size": 9, "bg_color": "#D0E4FF",
+                "border": 1, "border_color": "#BFCFE7", "align": "right", "valign": "vcenter"
+            })
+            fmt_subtotal_value = wb.add_format({
+                "bold": True, "font_size": 9, "bg_color": "#D0E4FF",
+                "border": 1, "border_color": "#BFCFE7", "num_format": "#,##0.00",
+                "align": "right", "valign": "vcenter"
+            })
+            fmt_grand_label = wb.add_format({
+                "bold": True, "font_size": 11, "font_color": "#FFFFFF",
+                "bg_color": "#1A3C6E", "border": 1, "border_color": "#0D2547",
+                "align": "right", "valign": "vcenter"
+            })
+            fmt_grand_value = wb.add_format({
+                "bold": True, "font_size": 11, "font_color": "#FFD700",
+                "bg_color": "#1A3C6E", "border": 1, "border_color": "#0D2547",
+                "num_format": "#,##0.00", "align": "right", "valign": "vcenter"
+            })
+            fmt_blank = wb.add_format({
+                "bg_color": "#F5F8FF", "border": 1, "border_color": "#D9E4F5"
+            })
+
+            # ---- Column widths ----
+            ws2.set_column(0, 0, 6)    # SI No
+            ws2.set_column(1, 1, 18)   # Invoice No
+            ws2.set_column(2, 2, 14)   # Date
+            ws2.set_column(3, 3, 28)   # Party Name
+            ws2.set_column(4, 4, 38)   # Product
+            ws2.set_column(5, 5, 10)   # HSN
+            ws2.set_column(6, 6, 7)    # Qty
+            ws2.set_column(7, 7, 7)    # UOM
+            ws2.set_column(8, 8, 13)   # Taxable Amt
+            ws2.set_column(9, 9, 11)   # CGST
+            ws2.set_column(10, 10, 11) # SGST
+            ws2.set_column(11, 11, 11) # IGST
+            ws2.set_column(12, 12, 13) # Total Amt
+            ws2.set_column(13, 13, 13) # Rounded Total
+
+            # ---- Title row ----
+            ws2.set_row(0, 24)
+            ws2.merge_range(0, 0, 0, 13, "Final Summary & Grouping", fmt_title)
+
+            # ---- Column header row ----
+            col_headers = [
+                "SI No", "Invoice No", "Invoice Date", "Party Name",
+                "Product", "HSN Code", "Qty", "UOM",
+                "Taxable Amount", "CGST", "SGST", "IGST",
+                "Total Amount", "Rounded Total"
+            ]
+            ws2.set_row(1, 18)
+            for ci, ch in enumerate(col_headers):
+                ws2.write(1, ci, ch, fmt_header)
+
+            # ---- Data rows ----
+            has_inv_col   = "Invoice No" in df_out.columns
+            has_date_col  = "Invoice Date" in df_out.columns
+            has_party_col = "Party Name" in df_out.columns
+
+            if has_inv_col:
+                invoice_groups = df_out.groupby(
+                    df_out["Invoice No"].astype(str).str.strip(),
+                    sort=False
+                )
+            else:
+                invoice_groups = [(None, df_out)]
+
+            row = 2  # current write row (0-indexed)
+            si_no = 1
+            grand_total_debit = 0.0
+
+            for inv_no, inv_df in invoice_groups:
+                inv_no = str(inv_no).strip() if inv_no else ""
+                date_val  = str(inv_df["Invoice Date"].iloc[0]).strip() if has_date_col else ""
+                party_val = str(inv_df["Party Name"].iloc[0]).strip() if has_party_col else ""
+
+                # -- Invoice header row --
+                ws2.set_row(row, 16)
+                ws2.write(row, 0, si_no, fmt_inv_group)
+                ws2.write(row, 1, inv_no, fmt_inv_group)
+                ws2.write(row, 2, date_val, fmt_inv_group)
+                ws2.merge_range(row, 3, row, 13, party_val, fmt_inv_group)
+                row += 1
+
+                # -- Product rows --
+                inv_taxable = 0.0
+                inv_cgst    = 0.0
+                inv_sgst    = 0.0
+                inv_igst    = 0.0
+                inv_total   = 0.0
+
+                for _, pr in inv_df.iterrows():
+                    product  = str(pr.get("Product", "")).strip()
+                    hsn      = str(pr.get("HSN Code", "")).strip() if "HSN Code" in inv_df.columns else ""
+                    qty      = to_float(pr.get("Qty", 0))
+                    uom      = str(pr.get("UOM", "")).strip() if "UOM" in inv_df.columns else ""
+                    taxable  = to_float(pr.get("Taxable Amount", 0))
+                    cgst     = to_float(pr.get("CGST Amount", 0))
+                    sgst     = to_float(pr.get("SGST Amount", 0))
+                    igst     = to_float(pr.get("IGST Amount", 0))
+                    total    = to_float(pr.get("Total Amount", 0))
+                    rounded  = custom_round(total)
+
+                    inv_taxable += taxable
+                    inv_cgst    += cgst
+                    inv_sgst    += sgst
+                    inv_igst    += igst
+                    inv_total   += total
+
+                    ws2.set_row(row, 15)
+                    ws2.write(row, 0, "",       fmt_product)
+                    ws2.write(row, 1, "",       fmt_product)
+                    ws2.write(row, 2, "",       fmt_product)
+                    ws2.write(row, 3, "",       fmt_product)
+                    ws2.write(row, 4, product,  fmt_product)
+                    ws2.write(row, 5, hsn,      fmt_product)
+                    ws2.write(row, 6, qty,      fmt_product_num)
+                    ws2.write(row, 7, uom,      fmt_product)
+                    ws2.write(row, 8, taxable,  fmt_product_num)
+                    ws2.write(row, 9, cgst,     fmt_product_num)
+                    ws2.write(row, 10, sgst,    fmt_product_num)
+                    ws2.write(row, 11, igst,    fmt_product_num)
+                    ws2.write(row, 12, total,   fmt_product_num)
+                    ws2.write(row, 13, rounded, fmt_product_num)
+                    row += 1
+
+                # -- Tax summary lines (3 blank spacer rows below products) --
+                inv_taxable = round(inv_taxable, 2)
+                inv_cgst    = round(inv_cgst, 2)
+                inv_sgst    = round(inv_sgst, 2)
+                inv_igst    = round(inv_igst, 2)
+                inv_rounded = custom_round(inv_total)
+                grand_total_debit += inv_rounded
+
+                # Tax summary row
+                for offset, (label, val) in enumerate([
+                    ("CGST:", inv_cgst),
+                    ("SGST:", inv_sgst),
+                    ("IGST:", inv_igst),
+                ]):
+                    ws2.set_row(row, 14)
+                    for ci in range(11):
+                        ws2.write(row, ci, "", fmt_blank)
+                    ws2.write(row, 11, label, fmt_tax_label)
+                    ws2.write(row, 12, val,   fmt_tax_value)
+                    ws2.write(row, 13, "",    fmt_blank)
+                    row += 1
+
+                # Invoice sub-total row
+                ws2.set_row(row, 16)
+                for ci in range(8):
+                    ws2.write(row, ci, "", fmt_subtotal_label)
+                ws2.write(row, 8,  inv_taxable,  fmt_subtotal_value)
+                ws2.write(row, 9,  inv_cgst,     fmt_subtotal_value)
+                ws2.write(row, 10, inv_sgst,     fmt_subtotal_value)
+                ws2.write(row, 11, inv_igst,     fmt_subtotal_value)
+                ws2.write(row, 12, round(inv_total, 2), fmt_subtotal_value)
+                ws2.write(row, 13, inv_rounded,  fmt_subtotal_value)
+                row += 1
+
+                # 3 blank spacer rows between invoices
+                for _ in range(3):
+                    ws2.set_row(row, 6)
+                    for ci in range(14):
+                        ws2.write(row, ci, "", fmt_blank)
+                    row += 1
+
+                si_no += 1
+
+            # ---- Grand Total Debits row ----
+            ws2.set_row(row, 22)
+            ws2.merge_range(row, 0, row, 12, "Total Debits", fmt_grand_label)
+            ws2.write(row, 13, grand_total_debit, fmt_grand_value)
         
         return jsonify({
             "success": True,
