@@ -1582,9 +1582,9 @@ def generate():
 
             # Now calculate the exact credits sum and the rounded total for the invoice
             exact_credits_sum = total_taxable_amount + cgst_ledgers_total + sgst_ledgers_total + igst_ledgers_total
-            rounded_total = round(total_invoice_amount)
+            rounded_total = custom_round(total_invoice_amount)
             if rounded_total == 0:
-                rounded_total = round(exact_credits_sum)
+                rounded_total = custom_round(exact_credits_sum)
                 
             # Roundoff offset
             roundoff_offset = round(rounded_total - exact_credits_sum, 2)
@@ -1753,17 +1753,6 @@ def generate_excel():
             else:
                 df_out[target_col] = None
 
-        # Calculate and append "Rounded Total Amount" based on "Total Amount"
-        if "Total Amount" in df_out.columns:
-            df_out["Rounded Total Amount"] = df_out["Total Amount"].apply(custom_round)
-        else:
-            df_out["Rounded Total Amount"] = 0
-
-        # Save the processed DataFrame to Excel with two sheets
-        base_name, _ = os.path.splitext(original_filename)
-        processed_filename = f"{base_name}_processed.xlsx"
-        processed_path = os.path.join(PROCESSED_FOLDER, processed_filename)
-
         # Local helper (to_float is a nested fn in other routes, define it here too)
         def to_float(val):
             if val is None:
@@ -1772,6 +1761,88 @@ def generate_excel():
                 return float(str(val).replace(",", "").strip())
             except Exception:
                 return 0.0
+
+        # ── Compute Misc (round-off) and Rounded Total per INVOICE ────────────
+        # Uses same logic as XML generation: group taxes by rate → round each group
+        # → exact_credits = taxable + sum(rounded groups) → misc = round(inv_total) - exact_credits
+        misc_map    = {}   # inv_no  -> misc amount
+        rounded_map = {}   # inv_no  -> rounded invoice total (what goes to Tally as debit)
+
+        if "Invoice No" in df_out.columns and "Total Amount" in df_out.columns:
+            for inv_no_key, inv_grp in df_out.groupby(
+                df_out["Invoice No"].astype(str).str.strip(), sort=False
+            ):
+                inv_total   = sum(to_float(v) for v in inv_grp["Total Amount"])
+                inv_taxable = round(sum(to_float(v) for v in inv_grp.get("Taxable Amount", [0])), 2)
+
+                cgst_by_key = {}
+                sgst_by_key = {}
+                igst_by_key = {}
+                for _, rr in inv_grp.iterrows():
+                    txbl = to_float(rr.get("Taxable Amount", 0))
+                    if txbl <= 0:
+                        continue
+                    c = to_float(rr.get("CGST Amount", 0))
+                    if c > 0:
+                        rk = int(round((c / txbl) * 100))
+                        cgst_by_key[rk] = cgst_by_key.get(rk, 0.0) + c
+                    s = to_float(rr.get("SGST Amount", 0))
+                    if s > 0:
+                        rk = int(round((s / txbl) * 100))
+                        sgst_by_key[rk] = sgst_by_key.get(rk, 0.0) + s
+                    ig = to_float(rr.get("IGST Amount", 0))
+                    if ig > 0:
+                        rk = int(round((ig / txbl) * 100))
+                        igst_by_key[rk] = igst_by_key.get(rk, 0.0) + ig
+
+                cgst_total = sum(round(v, 2) for v in cgst_by_key.values())
+                sgst_total = sum(round(v, 2) for v in sgst_by_key.values())
+                igst_total = sum(round(v, 2) for v in igst_by_key.values())
+
+                exact_credits  = inv_taxable + cgst_total + sgst_total + igst_total
+                rounded_total  = custom_round(inv_total)   # commercial rounding: always round .5 up (matches Tally)
+                misc           = round(rounded_total - exact_credits, 2)
+
+                misc_map[inv_no_key]    = misc
+                rounded_map[inv_no_key] = rounded_total
+
+        # Add Misc column right after Total Amount
+        # Show the value only on the first row of each invoice; 0 for subsequent rows
+        if "Invoice No" in df_out.columns:
+            seen_inv  = set()
+            misc_vals = []
+            rounded_vals = []
+            for _, rr in df_out.iterrows():
+                inv_key = str(rr.get("Invoice No", "")).strip()
+                if inv_key not in seen_inv:
+                    seen_inv.add(inv_key)
+                    misc_vals.append(misc_map.get(inv_key, 0.0))
+                    rounded_vals.append(rounded_map.get(inv_key, 0))
+                else:
+                    misc_vals.append(0.0)
+                    rounded_vals.append(0)
+
+            if "Total Amount" in df_out.columns:
+                pos = df_out.columns.get_loc("Total Amount") + 1
+                df_out.insert(pos, "Misc", misc_vals)
+                df_out.insert(pos + 1, "Invoice Rounded Total", rounded_vals)
+            else:
+                df_out["Misc"] = misc_vals
+                df_out["Invoice Rounded Total"] = rounded_vals
+        else:
+            # No invoice grouping possible - calculate Rounded Total Amount per row (fallback)
+            if "Total Amount" in df_out.columns:
+                df_out["Misc"] = 0
+                df_out["Invoice Rounded Total"] = df_out["Total Amount"].apply(lambda x: round(to_float(x)))
+
+        # Remove the old per-row Rounded Total Amount (it was misleading - rounded individual product rows)
+        if "Rounded Total Amount" in df_out.columns:
+            df_out.drop(columns=["Rounded Total Amount"], inplace=True)
+
+        # Save the processed DataFrame to Excel with two sheets
+        base_name, _ = os.path.splitext(original_filename)
+        processed_filename = f"{base_name}_processed.xlsx"
+        processed_path = os.path.join(PROCESSED_FOLDER, processed_filename)
 
         with pd.ExcelWriter(processed_path, engine="xlsxwriter") as writer:
             # ── Sheet 1: Processed Data (unchanged) ──────────────────────────
@@ -1804,12 +1875,14 @@ def generate_excel():
                 "border": 1, "border_color": "#BFCFE7"
             })
             fmt_inv_group = wb.add_format({
-                "bold": True, "font_size": 9, "bg_color": "#E8F0FB",
-                "border": 1, "border_color": "#BFCFE7", "valign": "vcenter"
+                "bold": True, "font_size": 9, "bg_color": "#FFD700",
+                "font_color": "#1A1A1A",
+                "border": 1, "border_color": "#C8A800", "valign": "vcenter"
             })
             fmt_inv_group_num = wb.add_format({
-                "bold": True, "font_size": 9, "bg_color": "#E8F0FB",
-                "border": 1, "border_color": "#BFCFE7", "num_format": "#,##0.00",
+                "bold": True, "font_size": 9, "bg_color": "#FFD700",
+                "font_color": "#1A1A1A",
+                "border": 1, "border_color": "#C8A800", "num_format": "#,##0.00",
                 "align": "right", "valign": "vcenter"
             })
             fmt_product = wb.add_format({
@@ -1819,6 +1892,13 @@ def generate_excel():
             fmt_product_num = wb.add_format({
                 "font_size": 9, "bg_color": "#FFFFFF",
                 "border": 1, "border_color": "#D9E4F5", "num_format": "#,##0.00",
+                "align": "right", "valign": "vcenter"
+            })
+            # Format for CGST/SGST/IGST cells that contain rate% + amount as text
+            fmt_tax_cell = wb.add_format({
+                "italic": True, "font_size": 9, "font_color": "#1A3C6E",
+                "bg_color": "#FFFFFF",
+                "border": 1, "border_color": "#D9E4F5",
                 "align": "right", "valign": "vcenter"
             })
             fmt_tax_label = wb.add_format({
@@ -1885,6 +1965,9 @@ def generate_excel():
             for ci, ch in enumerate(col_headers):
                 ws2.write(1, ci, ch, fmt_header)
 
+            # Freeze top 2 rows (title + column headers) so they stay visible on scroll
+            ws2.freeze_panes(2, 0)
+
             # ---- Data rows ----
             has_inv_col   = "Invoice No" in df_out.columns
             has_date_col  = "Invoice Date" in df_out.columns
@@ -1916,11 +1999,11 @@ def generate_excel():
                 row += 1
 
                 # -- Product rows --
-                inv_taxable = 0.0
-                inv_cgst    = 0.0
-                inv_sgst    = 0.0
-                inv_igst    = 0.0
-                inv_total   = 0.0
+                inv_taxable  = 0.0
+                inv_total    = 0.0
+                cgst_by_rate = {}  # {rate_pct: amount}
+                sgst_by_rate = {}
+                igst_by_rate = {}
 
                 for _, pr in inv_df.iterrows():
                     product  = str(pr.get("Product", "")).strip()
@@ -1935,49 +2018,53 @@ def generate_excel():
                     rounded  = custom_round(total)
 
                     inv_taxable += taxable
-                    inv_cgst    += cgst
-                    inv_sgst    += sgst
-                    inv_igst    += igst
                     inv_total   += total
 
+                    # Compute per-row rate for inline cell label
+                    def _rate_label(amt, tax):
+                        if taxable > 0 and tax > 0:
+                            r = int(round((tax / taxable) * 100))
+                            return f"({r}%) {tax:.2f}"
+                        return f"{tax:.2f}"
+
+                    # Track per-rate tax amounts for subtotal row
+                    if taxable > 0:
+                        if cgst > 0:
+                            r = int(round((cgst / taxable) * 100))
+                            cgst_by_rate[r] = cgst_by_rate.get(r, 0.0) + cgst
+                        if sgst > 0:
+                            r = int(round((sgst / taxable) * 100))
+                            sgst_by_rate[r] = sgst_by_rate.get(r, 0.0) + sgst
+                        if igst > 0:
+                            r = int(round((igst / taxable) * 100))
+                            igst_by_rate[r] = igst_by_rate.get(r, 0.0) + igst
+
                     ws2.set_row(row, 15)
-                    ws2.write(row, 0, "",       fmt_product)
-                    ws2.write(row, 1, "",       fmt_product)
-                    ws2.write(row, 2, "",       fmt_product)
-                    ws2.write(row, 3, "",       fmt_product)
-                    ws2.write(row, 4, product,  fmt_product)
-                    ws2.write(row, 5, hsn,      fmt_product)
-                    ws2.write(row, 6, qty,      fmt_product_num)
-                    ws2.write(row, 7, uom,      fmt_product)
-                    ws2.write(row, 8, taxable,  fmt_product_num)
-                    ws2.write(row, 9, cgst,     fmt_product_num)
-                    ws2.write(row, 10, sgst,    fmt_product_num)
-                    ws2.write(row, 11, igst,    fmt_product_num)
-                    ws2.write(row, 12, total,   fmt_product_num)
-                    ws2.write(row, 13, rounded, fmt_product_num)
+                    ws2.write(row, 0, "",                    fmt_product)
+                    ws2.write(row, 1, "",                    fmt_product)
+                    ws2.write(row, 2, "",                    fmt_product)
+                    ws2.write(row, 3, "",                    fmt_product)
+                    ws2.write(row, 4, product,               fmt_product)
+                    ws2.write(row, 5, hsn,                   fmt_product)
+                    ws2.write(row, 6, qty,                   fmt_product_num)
+                    ws2.write(row, 7, uom,                   fmt_product)
+                    ws2.write(row, 8, taxable,               fmt_product_num)
+                    ws2.write(row, 9,  _rate_label(taxable, cgst), fmt_tax_cell)
+                    ws2.write(row, 10, _rate_label(taxable, sgst), fmt_tax_cell)
+                    ws2.write(row, 11, _rate_label(taxable, igst), fmt_tax_cell)
+                    ws2.write(row, 12, total,                fmt_product_num)
+                    ws2.write(row, 13, rounded,              fmt_product_num)
                     row += 1
 
-                # -- Tax summary lines (3 blank spacer rows below products) --
+                # -- Subtotals only (no separate per-rate tax lines) --
                 inv_taxable = round(inv_taxable, 2)
-                inv_cgst    = round(inv_cgst, 2)
-                inv_sgst    = round(inv_sgst, 2)
-                inv_igst    = round(inv_igst, 2)
-                inv_rounded = custom_round(inv_total)
+                inv_rounded = custom_round(inv_total)   # commercial rounding: always round .5 up (matches Tally)
                 grand_total_debit += inv_rounded
 
-                # Tax summary row
-                for offset, (label, val) in enumerate([
-                    ("CGST:", inv_cgst),
-                    ("SGST:", inv_sgst),
-                    ("IGST:", inv_igst),
-                ]):
-                    ws2.set_row(row, 14)
-                    for ci in range(11):
-                        ws2.write(row, ci, "", fmt_blank)
-                    ws2.write(row, 11, label, fmt_tax_label)
-                    ws2.write(row, 12, val,   fmt_tax_value)
-                    ws2.write(row, 13, "",    fmt_blank)
-                    row += 1
+                # Recompute inv totals for subtotal row
+                inv_cgst = round(sum(cgst_by_rate.values()), 2)
+                inv_sgst = round(sum(sgst_by_rate.values()), 2)
+                inv_igst = round(sum(igst_by_rate.values()), 2)
 
                 # Invoice sub-total row
                 ws2.set_row(row, 16)
