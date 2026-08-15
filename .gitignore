@@ -1,8 +1,34 @@
-.venv/
-uploads/
-processed/
+# Python
 __pycache__/
 *.pyc
-*.log
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build & dist (PyInstaller)
 dist/
 build/
+*.spec
+
+# App runtime folders
+uploads/
+processed/
+
+# Tally cache data (sensitive, machine-specific)
+tally_companies/
+
+# Scratch / test scripts
+scratch_*.py
+scratch_*.xml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
