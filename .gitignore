@@ -4,3 +4,5 @@ processed/
 __pycache__/
 *.pyc
 *.log
+dist/
+build/

@@ -11,10 +11,22 @@ from datetime import datetime
 import pandas as pd
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
-app = Flask(__name__, template_folder="templates")
+# Configure dynamic directories for standalone PyInstaller EXE or local Python
+if getattr(sys, 'frozen', False):
+    # Running as compiled PyInstaller executable
+    EXE_DIR = os.path.dirname(sys.executable)
+    BUNDLE_DIR = getattr(sys, '_MEIPASS', EXE_DIR)
+    BASE_DIR = EXE_DIR
+else:
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = BUNDLE_DIR
 
-# Configure directories
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BUNDLE_DIR, "templates"),
+    static_folder=os.path.join(BUNDLE_DIR, "static")
+)
+
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
 TALLY_CACHE_FOLDER = os.path.join(BASE_DIR, "tally_companies")
@@ -1528,14 +1540,14 @@ def generate():
                 
                 inventory_entries_xml += f"""
             <ALLINVENTORYENTRIES.LIST>
-              <STOCKITEMNAME>{product_name}</STOCKITEMNAME>
+              <STOCKITEMNAME>{escape_xml_value(product_name)}</STOCKITEMNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <RATE>{rate:.2f} Nos</RATE>
               <AMOUNT>{taxable_amt:.2f}</AMOUNT>
               <ACTUALQTY>{qty:.2f} Nos</ACTUALQTY>
               <BILLEDQTY>{qty:.2f} Nos</BILLEDQTY>
               <ACCOUNTINGALLOCATIONS.LIST>
-                <LEDGERNAME>{sales_ledger_name or 'Goods Sales'}</LEDGERNAME>
+                <LEDGERNAME>{escape_xml_value(sales_ledger_name or 'Goods Sales')}</LEDGERNAME>
                 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
                 <AMOUNT>{taxable_amt:.2f}</AMOUNT>
               </ACCOUNTINGALLOCATIONS.LIST>
@@ -1592,7 +1604,7 @@ def generate():
             # Party ledger entry: Debit (negative)
             ledger_entries_xml = f"""
             <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{tally_party}</LEDGERNAME>
+              <LEDGERNAME>{escape_xml_value(tally_party)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <AMOUNT>-{rounded_total:.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
@@ -1603,7 +1615,7 @@ def generate():
                     ledger_name = tax_ledger_mappings.get(key, key)
                     ledger_entries_xml += f"""
             <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{ledger_name}</LEDGERNAME>
+              <LEDGERNAME>{escape_xml_value(ledger_name)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
@@ -1613,7 +1625,7 @@ def generate():
                     ledger_name = tax_ledger_mappings.get(key, key)
                     ledger_entries_xml += f"""
             <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{ledger_name}</LEDGERNAME>
+              <LEDGERNAME>{escape_xml_value(ledger_name)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
@@ -1623,7 +1635,7 @@ def generate():
                     ledger_name = tax_ledger_mappings.get(key, key)
                     ledger_entries_xml += f"""
             <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{ledger_name}</LEDGERNAME>
+              <LEDGERNAME>{escape_xml_value(ledger_name)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>{round(amt, 2):.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
@@ -1632,7 +1644,7 @@ def generate():
             if abs(roundoff_offset) > 0.001:
                 ledger_entries_xml += f"""
             <LEDGERENTRIES.LIST>
-              <LEDGERNAME>{misc_ledger_name or 'Misc'}</LEDGERNAME>
+              <LEDGERNAME>{escape_xml_value(misc_ledger_name or 'Misc')}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>{roundoff_offset:.2f}</AMOUNT>
             </LEDGERENTRIES.LIST>"""
@@ -1642,12 +1654,12 @@ def generate():
           <VOUCHER VCHTYPE="Sales" Action="Create" OBJVIEW="Invoice Voucher View">
             <DATE>{tally_date}</DATE>
             <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
-            <VOUCHERNUMBER>{inv_no}</VOUCHERNUMBER>
-            <PARTYLEDGERNAME>{tally_party}</PARTYLEDGERNAME>
+            <VOUCHERNUMBER>{escape_xml_value(inv_no)}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>{escape_xml_value(tally_party)}</PARTYLEDGERNAME>
             <EFFECTIVEDATE>{tally_date}</EFFECTIVEDATE>
             <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
             <ISINVOICE>Yes</ISINVOICE>
-            <NARRATION>{narration_text}</NARRATION>
+            <NARRATION>{escape_xml_value(narration_text)}</NARRATION>
             {inventory_entries_xml}
             {ledger_entries_xml}
           </VOUCHER>
@@ -1948,18 +1960,19 @@ def generate_excel():
             ws2.set_column(10, 10, 11) # SGST
             ws2.set_column(11, 11, 11) # IGST
             ws2.set_column(12, 12, 13) # Total Amt
-            ws2.set_column(13, 13, 13) # Rounded Total
+            ws2.set_column(13, 13, 10) # Misc
+            ws2.set_column(14, 14, 13) # Rounded Total
 
             # ---- Title row ----
             ws2.set_row(0, 24)
-            ws2.merge_range(0, 0, 0, 13, "Final Summary & Grouping", fmt_title)
+            ws2.merge_range(0, 0, 0, 14, "Final Summary & Grouping", fmt_title)
 
             # ---- Column header row ----
             col_headers = [
                 "SI No", "Invoice No", "Invoice Date", "Party Name",
                 "Product", "HSN Code", "Qty", "UOM",
                 "Taxable Amount", "CGST", "SGST", "IGST",
-                "Total Amount", "Rounded Total"
+                "Total Amount", "Misc", "Rounded Total"
             ]
             ws2.set_row(1, 18)
             for ci, ch in enumerate(col_headers):
@@ -1995,7 +2008,7 @@ def generate_excel():
                 ws2.write(row, 0, si_no, fmt_inv_group)
                 ws2.write(row, 1, inv_no, fmt_inv_group)
                 ws2.write(row, 2, date_val, fmt_inv_group)
-                ws2.merge_range(row, 3, row, 13, party_val, fmt_inv_group)
+                ws2.merge_range(row, 3, row, 14, party_val, fmt_inv_group)
                 row += 1
 
                 # -- Product rows --
@@ -2053,7 +2066,8 @@ def generate_excel():
                     ws2.write(row, 10, _rate_label(taxable, sgst), fmt_tax_cell)
                     ws2.write(row, 11, _rate_label(taxable, igst), fmt_tax_cell)
                     ws2.write(row, 12, total,                fmt_product_num)
-                    ws2.write(row, 13, rounded,              fmt_product_num)
+                    ws2.write(row, 13, "",                   fmt_product)  # Misc blank on product rows
+                    ws2.write(row, 14, rounded,              fmt_product_num)
                     row += 1
 
                 # -- Subtotals only (no separate per-rate tax lines) --
@@ -2067,21 +2081,23 @@ def generate_excel():
                 inv_igst = round(sum(igst_by_rate.values()), 2)
 
                 # Invoice sub-total row
+                inv_misc = round(inv_rounded - (inv_taxable + inv_cgst + inv_sgst + inv_igst), 2)
                 ws2.set_row(row, 16)
                 for ci in range(8):
                     ws2.write(row, ci, "", fmt_subtotal_label)
-                ws2.write(row, 8,  inv_taxable,  fmt_subtotal_value)
-                ws2.write(row, 9,  inv_cgst,     fmt_subtotal_value)
-                ws2.write(row, 10, inv_sgst,     fmt_subtotal_value)
-                ws2.write(row, 11, inv_igst,     fmt_subtotal_value)
+                ws2.write(row, 8,  inv_taxable,         fmt_subtotal_value)
+                ws2.write(row, 9,  inv_cgst,            fmt_subtotal_value)
+                ws2.write(row, 10, inv_sgst,            fmt_subtotal_value)
+                ws2.write(row, 11, inv_igst,            fmt_subtotal_value)
                 ws2.write(row, 12, round(inv_total, 2), fmt_subtotal_value)
-                ws2.write(row, 13, inv_rounded,  fmt_subtotal_value)
+                ws2.write(row, 13, inv_misc,            fmt_subtotal_value)  # Misc
+                ws2.write(row, 14, inv_rounded,         fmt_subtotal_value)  # Rounded Total
                 row += 1
 
                 # 3 blank spacer rows between invoices
                 for _ in range(3):
                     ws2.set_row(row, 6)
-                    for ci in range(14):
+                    for ci in range(15):
                         ws2.write(row, ci, "", fmt_blank)
                     row += 1
 
@@ -2089,8 +2105,8 @@ def generate_excel():
 
             # ---- Grand Total Debits row ----
             ws2.set_row(row, 22)
-            ws2.merge_range(row, 0, row, 12, "Total Debits", fmt_grand_label)
-            ws2.write(row, 13, grand_total_debit, fmt_grand_value)
+            ws2.merge_range(row, 0, row, 13, "Total Debits", fmt_grand_label)
+            ws2.write(row, 14, grand_total_debit, fmt_grand_value)
         
         return jsonify({
             "success": True,
@@ -2101,6 +2117,18 @@ def generate_excel():
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
+    import webbrowser
+    from threading import Timer
+
     port_no = 5005
-    print(f"Starting Excel Header Mapper Flask server on http://localhost:{port_no}...")
+    url = f"http://localhost:{port_no}"
+    print(f"Starting Excel Header Mapper Flask server on {url}...")
+
+    def open_browser():
+        try:
+            webbrowser.open_new(url)
+        except Exception:
+            pass
+
+    Timer(1.5, open_browser).start()
     app.run(host="localhost", port=port_no, debug=False)
