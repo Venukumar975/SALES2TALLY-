@@ -1226,19 +1226,41 @@ def create_missing_items():
             </GSTDETAILS.LIST>"""
 
             parent_tag = f"<PARENT>{under_xml}</PARENT>" if under else ""
-            
-            masters_body += f"""
+
+            if not is_applicable:
+                # ─────────────────────────────────────────────────────────────
+                # FLOW 1: Product with NO GST
+                # Only set Name, Stock Group, Units, and GST = Not Applicable.
+                # No HSN details, no GST rate, no Type of Supply.
+                # ─────────────────────────────────────────────────────────────
+                masters_body += f"""
     <TALLYMESSAGE xmlns:UDF="TallyUDF">
       <STOCKITEM NAME="{prod_name_xml}" Action="Create">
         <NAME>{prod_name_xml}</NAME>
         {parent_tag}
         <BASEUNITS>{units_xml}</BASEUNITS>
-        <GSTAPPLICABLE>{gst_app_status}</GSTAPPLICABLE>
+        <GSTAPPLICABLE>Not Applicable</GSTAPPLICABLE>
+      </STOCKITEM>
+    </TALLYMESSAGE>"""
+
+            else:
+                # ─────────────────────────────────────────────────────────────
+                # FLOW 2: Product WITH GST
+                # Set Name, Stock Group, Units, GST = Applicable,
+                # Type of Supply (user input), HSN details, and GST rate block.
+                # ─────────────────────────────────────────────────────────────
+                masters_body += f"""
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+      <STOCKITEM NAME="{prod_name_xml}" Action="Create">
+        <NAME>{prod_name_xml}</NAME>
+        {parent_tag}
+        <BASEUNITS>{units_xml}</BASEUNITS>
+        <GSTAPPLICABLE>Applicable</GSTAPPLICABLE>
         <GSTTYPEOFSUPPLY>{supply_type_xml}</GSTTYPEOFSUPPLY>
         <HSNDETAILS.LIST>
           <APPLICABLEFROM>20240401</APPLICABLEFROM>
           <HSNCODE>{hsn_code_xml}</HSNCODE>
-          <HSN>{prod_name_xml}</HSN>
+          <HSN>{prod_name_xml} - {hsn_code_xml}</HSN>
           <SRCOFHSNDETAILS>Specify Details Here</SRCOFHSNDETAILS>
         </HSNDETAILS.LIST>
         {gst_details}
