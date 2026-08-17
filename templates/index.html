@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Header Mapper & Register Generator</title>
+    <title>SALES2TALLY</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='app_icon.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -12,10 +13,10 @@
         <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
             <div>
                 <div class="logo-container">
-                    <div class="logo-icon">⇄</div>
-                    <h1>Sales Register Automation Suite</h1>
+                    <img src="{{ url_for('static', filename='app_icon.png') }}" style="width: 36px; height: 36px; border-radius: 8px;" alt="Logo">
+                    <h1>SALES2TALLY</h1>
                 </div>
-                <p>Map and Import your excel spreadsheets to standard sales registers automatically</p>
+                <p>Map and Import Excel sales registers into Tally Prime automatically</p>
             </div>
             <div id="header-license-pill" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                 <span>●</span> <span id="header-license-text">Checking License...</span>

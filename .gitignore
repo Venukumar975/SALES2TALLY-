@@ -10,10 +10,13 @@ __pycache__/
 venv/
 env/
 
-# Build & dist (PyInstaller)
+# Build & dist (PyInstaller & PyArmor)
 dist/
 build/
+dist_obf/
+dist_installer/
 *.spec
+*.lic
 
 # App runtime folders
 uploads/

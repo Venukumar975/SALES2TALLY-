@@ -75,6 +75,10 @@ async function generateSalesXML() {
         if (data.success) {
             const downloadBtn = document.getElementById("download-link");
             downloadBtn.href = `/download/${data.filename}`;
+            downloadBtn.onclick = (e) => {
+                e.preventDefault();
+                triggerFileDownload(data.filename);
+            };
             
             hideStatus("mapping-status");
             document.getElementById("success-container").style.display = "flex";
@@ -133,6 +137,10 @@ async function generateProcessedExcel() {
         if (data.success) {
             const downloadBtn = document.getElementById("excel-download-link");
             downloadBtn.href = `/download/${data.filename}`;
+            downloadBtn.onclick = (e) => {
+                e.preventDefault();
+                triggerFileDownload(data.filename);
+            };
             
             hideStatus("mapping-status");
             document.getElementById("excel-success-container").style.display = "flex";
@@ -145,3 +153,59 @@ async function generateProcessedExcel() {
         btn.disabled = false;
     }
 }
+
+async function triggerFileDownload(filename) {
+    if (!filename) return;
+
+    // 1. Try PyWebView native Windows Save As file dialog
+    try {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_file_dialog) {
+            const res = await window.pywebview.api.save_file_dialog(filename);
+            if (res && res.success) {
+                alert(`✅ File successfully saved to:\n\n${res.saved_to}`);
+                return;
+            } else if (res && res.cancelled) {
+                return; // User clicked cancel in file picker
+            }
+        }
+    } catch (e) {
+        console.warn("PyWebView Save Dialog fallback triggered:", e);
+    }
+
+    // 2. Direct save to user's Downloads directory via backend API
+    try {
+        const res = await fetch("/api/save-to-downloads", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`✅ File saved to your Downloads folder:\n\n${data.saved_to}`);
+            return;
+        }
+    } catch (e) {
+        console.warn("Downloads folder save fallback:", e);
+    }
+
+    // 3. Fallback: JavaScript blob download
+    try {
+        const response = await fetch(`/download/${filename}`);
+        if (!response.ok) throw new Error("Could not fetch file");
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        }, 2000);
+    } catch (err) {
+        alert("Download error: " + err.message);
+    }
+}
+

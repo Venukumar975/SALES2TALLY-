@@ -15,7 +15,7 @@ from config import LOCAL_APP_DATA
 # Shared Secret for validating signed license keys
 SECRET_KEY = b"SALES_REG_2026_MASTER_SECRET_KEY_99a8b7c6d5e4f3"
 
-LICENSE_DIR = os.path.join(LOCAL_APP_DATA, "salesregister")
+LICENSE_DIR = os.path.join(LOCAL_APP_DATA, "SALES2TALLY")
 LICENSE_FILE = os.path.join(LICENSE_DIR, "license.lic")
 
 # Global in-memory license status flag
@@ -30,12 +30,18 @@ _LICENSE_STATE = {
 
 _STATE_LOCK = threading.Lock()
 _HEARTBEAT_STARTED = False
+_CACHED_HWID = None
 
 def get_machine_hwid() -> str:
     """
     Generate a stable, unique 16-character hardware signature for this machine.
     Combines Windows MachineGuid, Motherboard UUID, and CPU Processor ID.
+    Cached in-memory to prevent repeated subprocess calls.
     """
+    global _CACHED_HWID
+    if _CACHED_HWID:
+        return _CACHED_HWID
+
     guid_str = ""
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography") as key:
@@ -43,11 +49,13 @@ def get_machine_hwid() -> str:
     except Exception:
         pass
 
+    no_window = 0x08000000 if sys.platform == "win32" else 0
+
     uuid_str = ""
     try:
-        # Motherboard UUID via PowerShell CIM
-        cmd = ["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_ComputerSystemProduct).UUID"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        # Motherboard UUID via PowerShell CIM (completely silent, no cmd window)
+        cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_ComputerSystemProduct).UUID"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=no_window)
         if proc.returncode == 0:
             uuid_str = proc.stdout.strip()
     except Exception:
@@ -55,9 +63,9 @@ def get_machine_hwid() -> str:
 
     cpu_str = ""
     try:
-        # CPU ID
-        cmd = ["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_Processor).ProcessorId"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        # CPU ID (completely silent, no cmd window)
+        cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_Processor).ProcessorId"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=no_window)
         if proc.returncode == 0:
             cpu_str = proc.stdout.strip()
     except Exception:
@@ -71,6 +79,7 @@ def get_machine_hwid() -> str:
     h = hashlib.sha256(combined.encode("utf-8")).hexdigest().upper()
     # Format into 4 groups of 4 characters: XXXX-XXXX-XXXX-XXXX
     hwid = f"{h[0:4]}-{h[4:8]}-{h[8:12]}-{h[12:16]}"
+    _CACHED_HWID = hwid
     return hwid
 
 def decode_and_verify_key(key_str: str, current_hwid: str = None):

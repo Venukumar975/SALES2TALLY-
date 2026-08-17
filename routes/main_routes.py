@@ -72,3 +72,25 @@ def get_headers():
 @main_bp.route("/download/<path:filename>", methods=["GET"])
 def download_file(filename):
     return send_from_directory(PROCESSED_FOLDER, filename, as_attachment=True)
+
+@main_bp.route("/api/save-to-downloads", methods=["POST"])
+def save_to_downloads():
+    import shutil
+    data = request.json or {}
+    filename = data.get("filename")
+    if not filename:
+        return jsonify({"success": False, "error": "No filename provided"}), 400
+    
+    src_path = os.path.join(PROCESSED_FOLDER, filename)
+    if not os.path.exists(src_path):
+        return jsonify({"success": False, "error": f"File {filename} not found"}), 404
+    
+    downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+    os.makedirs(downloads_dir, exist_ok=True)
+    dest_path = os.path.join(downloads_dir, filename)
+    try:
+        shutil.copyfile(src_path, dest_path)
+        return jsonify({"success": True, "saved_to": dest_path})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+

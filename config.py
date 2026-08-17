@@ -14,19 +14,59 @@ else:
 TEMPLATE_FOLDER = os.path.join(BUNDLE_DIR, "templates")
 STATIC_FOLDER = os.path.join(BUNDLE_DIR, "static")
 
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
-
-# Store Tally cached masters in %LOCALAPPDATA%\salesregister\tally_companies
 LOCAL_APP_DATA = os.environ.get("LOCALAPPDATA") or os.path.expanduser(os.path.join("~", "AppData", "Local"))
-TALLY_CACHE_FOLDER = os.path.join(LOCAL_APP_DATA, "salesregister", "tally_companies")
+APP_DATA_DIR = os.path.join(LOCAL_APP_DATA, "SALES2TALLY")
+TALLY_CACHE_FOLDER = os.path.join(APP_DATA_DIR, "tally_companies")
+
+# Temporary ephemeral directories in LocalAppData (flushed automatically)
+TEMP_FOLDER = os.path.join(APP_DATA_DIR, "temp")
+UPLOAD_FOLDER = os.path.join(TEMP_FOLDER, "uploads")
+PROCESSED_FOLDER = os.path.join(TEMP_FOLDER, "processed")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 os.makedirs(TALLY_CACHE_FOLDER, exist_ok=True)
 
-# Migrate existing local cache to LOCALAPPDATA if available
 import shutil
+
+# Migrate from previous salesregister folder if present
+_legacy_salesregister = os.path.join(LOCAL_APP_DATA, "salesregister")
+if os.path.exists(_legacy_salesregister):
+    for _sub in ["tally_companies", "license.lic"]:
+        _src = os.path.join(_legacy_salesregister, _sub)
+        _dst = os.path.join(APP_DATA_DIR, _sub)
+        if os.path.exists(_src) and not os.path.exists(_dst):
+            try:
+                if os.path.isdir(_src):
+                    shutil.copytree(_src, _dst)
+                else:
+                    shutil.copy2(_src, _dst)
+            except Exception:
+                pass
+
+def cleanup_temp_files():
+    """Flush out all temporary uploaded and processed files."""
+    for folder in (UPLOAD_FOLDER, PROCESSED_FOLDER):
+        if os.path.exists(folder):
+            for fname in os.listdir(folder):
+                fpath = os.path.join(folder, fname)
+                try:
+                    if os.path.isfile(fpath):
+                        os.remove(fpath)
+                    elif os.path.isdir(fpath):
+                        shutil.rmtree(fpath)
+                except Exception:
+                    pass
+
+# One-time cleanup of legacy project root uploads/processed folders if present
+for _legacy in (os.path.join(BASE_DIR, "uploads"), os.path.join(BASE_DIR, "processed")):
+    if os.path.exists(_legacy) and os.path.isdir(_legacy):
+        try:
+            shutil.rmtree(_legacy)
+        except Exception:
+            pass
+
+# Migrate existing local cache to LOCALAPPDATA if available
 _old_cache_folder = os.path.join(BASE_DIR, "tally_companies")
 if os.path.exists(_old_cache_folder):
     for _item in os.listdir(_old_cache_folder):
