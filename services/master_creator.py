@@ -168,19 +168,22 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
         hsn_code_xml = escape_xml_value(hsn_code)
             
         is_applicable = (cgst_amt > 0) or (sgst_amt > 0) or (igst_amt > 0)
-        gst_app_status = "Applicable" if is_applicable else "Not Applicable"
+        gst_app_status = "Applicable"
         
-        gst_details = ""
         if is_applicable and taxable_amt > 0:
+            taxability = "Taxable"
             if cgst_amt > 0 or sgst_amt > 0:
                 gst_rate = round(((cgst_amt + sgst_amt) / taxable_amt) * 100, 2)
             else:
                 gst_rate = round((igst_amt / taxable_amt) * 100, 2)
+        else:
+            taxability = "Nil Rated"
+            gst_rate = 0
                 
-            gst_details = f"""
+        gst_details = f"""
         <GSTDETAILS.LIST>
           <APPLICABLEFROM>20240401</APPLICABLEFROM>
-          <TAXABILITY>Taxable</TAXABILITY>
+          <TAXABILITY>{taxability}</TAXABILITY>
           <SRCOFGSTDETAILS>Specify Details Here</SRCOFGSTDETAILS>
           <STATEWISEDETAILS.LIST>
             <STATENAME>&#4; Any</STATENAME>
@@ -192,7 +195,7 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
           </STATEWISEDETAILS.LIST>
         </GSTDETAILS.LIST>"""
 
-        parent_tag = f"<PARENT>{under_xml}</PARENT>" if under else ""
+        parent_tag = f"<PARENT>{under_xml}</PARENT>" if under and under.lower() != "primary" else ""
 
         masters_body += f"""
     <TALLYMESSAGE xmlns:UDF="TallyUDF">

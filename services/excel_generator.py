@@ -47,8 +47,9 @@ def generate_formatted_excel(file_path, sheet_name, mappings, original_filename,
         for inv_no_key, inv_grp in df_out.groupby(
             df_out["Invoice No"].astype(str).str.strip(), sort=False
         ):
-            inv_total   = sum(to_float(v) for v in inv_grp["Total Amount"])
-            inv_taxable = round(sum(to_float(v) for v in inv_grp.get("Taxable Amount", [0])), 2)
+            inv_total      = sum(to_float(v) for v in inv_grp["Total Amount"])
+            # Use raw taxable (no pre-rounding) — mirrors XML generator logic exactly
+            inv_taxable_raw = sum(to_float(v) for v in inv_grp.get("Taxable Amount", [0]))
 
             cgst_by_key = {}
             sgst_by_key = {}
@@ -70,11 +71,13 @@ def generate_formatted_excel(file_path, sheet_name, mappings, original_filename,
                     rk = int(round((ig / txbl) * 100))
                     igst_by_key[rk] = igst_by_key.get(rk, 0.0) + ig
 
+            # Round each rate-group to 2dp — same as what XML writes into <AMOUNT> tags
             cgst_total = sum(round(v, 2) for v in cgst_by_key.values())
             sgst_total = sum(round(v, 2) for v in sgst_by_key.values())
             igst_total = sum(round(v, 2) for v in igst_by_key.values())
 
-            exact_credits  = inv_taxable + cgst_total + sgst_total + igst_total
+            # exact_credits uses raw taxable — identical to XML's exact_credits_sum
+            exact_credits  = inv_taxable_raw + cgst_total + sgst_total + igst_total
             rounded_total  = custom_round(inv_total)
             misc           = round(rounded_total - exact_credits, 2)
 
@@ -334,13 +337,13 @@ def generate_formatted_excel(file_path, sheet_name, mappings, original_filename,
                 ws2.write(row, 14, rounded,              fmt_product_num)
                 row += 1
 
-            # -- Subtotals --
+            # -- Subtotals (Unified with Sheet 1 & XML logic) --
+            inv_rounded = rounded_map.get(inv_no, custom_round(inv_total))
+            inv_cgst = sum(round(v, 2) for v in cgst_by_rate.values())
+            inv_sgst = sum(round(v, 2) for v in sgst_by_rate.values())
+            inv_igst = sum(round(v, 2) for v in igst_by_rate.values())
+            inv_misc = misc_map.get(inv_no, round(inv_rounded - (inv_taxable + inv_cgst + inv_sgst + inv_igst), 2))
             inv_taxable = round(inv_taxable, 2)
-            inv_rounded = custom_round(inv_total)
-            inv_cgst = round(sum(cgst_by_rate.values()), 2)
-            inv_sgst = round(sum(sgst_by_rate.values()), 2)
-            inv_igst = round(sum(igst_by_rate.values()), 2)
-            inv_misc = round(inv_rounded - (inv_taxable + inv_cgst + inv_sgst + inv_igst), 2)
 
             # Accumulate grand totals
             grand_total_taxable += inv_taxable
