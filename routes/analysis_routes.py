@@ -274,11 +274,60 @@ def api_check_products():
                 perfect_matches.append(prod)
             else:
                 non_existing.append(prod)
+        
+        # Detect unique unit types for missing products from UOM column
+        detected_units = []
+        uom_col = mappings.get("UOM")
+        if uom_col and uom_col in df_data.columns and non_existing:
+            non_existing_lower = [p.strip().lower() for p in non_existing]
+            uom_series = df_data[df_data[src_prod_col].apply(clean_text_cell).str.strip().str.lower().isin(non_existing_lower)][uom_col]
+            raw_units = uom_series.dropna().astype(str).str.strip().unique()
+            detected_units = sorted([u for u in raw_units if u and u.lower() not in ("nan", "none", "null", "")])
                 
         return jsonify({
             "success": True,
             "perfect_matches": sorted(perfect_matches),
-            "non_existing": sorted(non_existing)
+            "non_existing": sorted(non_existing),
+            "detected_units": detected_units
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@analysis_bp.route("/api/check-units", methods=["POST"])
+def api_check_units():
+    data = request.json or {}
+    file_id = data.get("file_id")
+    sheet_name = data.get("sheet_name")
+    mappings = data.get("mappings", {})
+    header_row = data.get("header_row")
+    
+    if not file_id or not sheet_name or not mappings:
+        return jsonify({"success": False, "error": "Missing parameters"}), 400
+        
+    file_path = None
+    for ext in ('.xlsx', '.xls'):
+        p = os.path.join(UPLOAD_FOLDER, f"{file_id}{ext}")
+        if os.path.exists(p):
+            file_path = p
+            break
+            
+    if not file_path:
+        return jsonify({"success": False, "error": "File not found"}), 404
+        
+    try:
+        headers, df_data = find_headers_and_df(file_path, sheet_name, header_row=header_row)
+        uom_col = mappings.get("UOM")
+        
+        detected_units = []
+        if uom_col and uom_col in df_data.columns:
+            raw_units = df_data[uom_col].dropna().astype(str).str.strip().unique()
+            detected_units = sorted([u for u in raw_units if u and u.lower() not in ("nan", "none", "null", "")])
+            
+        return jsonify({
+            "success": True,
+            "units": detected_units,
+            "uom_mapped": bool(uom_col and uom_col in df_data.columns)
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+

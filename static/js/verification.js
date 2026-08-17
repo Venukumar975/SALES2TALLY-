@@ -1,5 +1,7 @@
 // Party & Product Verification and Master Creation Modals
 
+let lastDetectedUnits = [];
+
 async function checkPartyNames() {
     const sheet = document.getElementById("sheet_select").value;
     const rowVal = document.getElementById("header_row").value || 1;
@@ -214,6 +216,7 @@ async function checkProductNames() {
             document.getElementById("count-products-missing").innerText = data.non_existing.length;
             const listMiss = document.getElementById("list-products-missing");
             lastNonExistingProducts = data.non_existing;
+            lastDetectedUnits = data.detected_units || [];
 
             if (data.non_existing.length > 0) {
                 listMiss.innerText = data.non_existing.join(", ");
@@ -294,6 +297,23 @@ function openCreateItemsModal() {
         return;
     }
 
+    // Populate detected units badges
+    const unitsDisplay = document.getElementById("detected-units-display");
+    const warningBox = document.getElementById("units-warning-box");
+    unitsDisplay.innerHTML = "";
+    if (lastDetectedUnits && lastDetectedUnits.length > 0) {
+        lastDetectedUnits.forEach(unit => {
+            const badge = document.createElement("span");
+            badge.innerText = unit;
+            badge.style.cssText = "background: rgba(99,102,241,0.15); color: var(--accent-primary); border: 1px solid rgba(99,102,241,0.35); border-radius: 20px; padding: 3px 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;";
+            unitsDisplay.appendChild(badge);
+        });
+        warningBox.style.display = "block";
+    } else {
+        unitsDisplay.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No UOM column mapped — fallback: Nos</span>';
+        warningBox.style.display = "none";
+    }
+
     const listDiv = document.getElementById("missing-items-list-modal");
     listDiv.innerHTML = "";
     lastNonExistingProducts.forEach(prod => {
@@ -317,7 +337,6 @@ async function submitCreateStockItems() {
     const sheet = document.getElementById("sheet_select").value;
     const rowVal = document.getElementById("header_row").value || 1;
     const under = document.getElementById("new_item_under").value.trim();
-    const units = document.getElementById("new_item_units").value.trim();
     const supplyType = document.getElementById("new_item_supply_type").value;
 
     const mappings = {};
@@ -349,7 +368,6 @@ async function submitCreateStockItems() {
                 header_row: rowVal,
                 company_name: stockCo,
                 under: under,
-                units: units,
                 supply_type: supplyType,
                 products: lastNonExistingProducts
             })
@@ -376,3 +394,71 @@ async function submitCreateStockItems() {
         openBtn.disabled = false;
     }
 }
+
+async function checkUnits() {
+    const sheet = document.getElementById("sheet_select").value;
+    const rowVal = document.getElementById("header_row").value || 1;
+    if (!tempFileId) {
+        showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
+        return;
+    }
+    if (!sheet) {
+        showStatus("mapping-status", null, "⚠️ Please select a worksheet sheet first.", "error");
+        return;
+    }
+
+    const mappings = {};
+    targetFields.forEach(field => {
+        const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+        if (dropdown && dropdown.value) {
+            mappings[field.id] = dropdown.value;
+        }
+    });
+
+    showStatus("mapping-status", "check-units-loader", "Detecting unit types from Excel...", "info");
+    document.getElementById("btn-check-units").disabled = true;
+    document.getElementById("units-check-results-container").style.display = "none";
+
+    try {
+        const res = await fetch("/api/check-units", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                file_id: tempFileId,
+                sheet_name: sheet,
+                mappings: mappings,
+                header_row: rowVal
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            hideStatus("mapping-status");
+            const container = document.getElementById("units-check-results-container");
+            const badgeList = document.getElementById("units-badge-list");
+            badgeList.innerHTML = "";
+
+            if (data.units && data.units.length > 0) {
+                data.units.forEach(u => {
+                    const badge = document.createElement("span");
+                    badge.innerText = u;
+                    badge.style.cssText = "background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 20px; padding: 4px 14px; font-size: 0.85rem; font-weight: 700; white-space: nowrap;";
+                    badgeList.appendChild(badge);
+                });
+            } else if (!data.uom_mapped) {
+                badgeList.innerHTML = '<span style="font-size: 0.85rem; color: #f87171;">⚠️ UOM column is not mapped yet. Please map the UOM column in Step 3.</span>';
+            } else {
+                badgeList.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No specific unit values found in mapped UOM column — fallback: Nos</span>';
+            }
+
+            container.style.display = "flex";
+        } else {
+            showStatus("mapping-status", null, `❌ Failed to check units: ${data.error}`, "error");
+        }
+    } catch (err) {
+        showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+    } finally {
+        document.getElementById("btn-check-units").disabled = false;
+    }
+}
+

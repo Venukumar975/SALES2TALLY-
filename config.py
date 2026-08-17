@@ -16,14 +16,30 @@ STATIC_FOLDER = os.path.join(BUNDLE_DIR, "static")
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
-TALLY_CACHE_FOLDER = os.path.join(BASE_DIR, "tally_companies")
+
+# Store Tally cached masters in %LOCALAPPDATA%\salesregister\tally_companies
+LOCAL_APP_DATA = os.environ.get("LOCALAPPDATA") or os.path.expanduser(os.path.join("~", "AppData", "Local"))
+TALLY_CACHE_FOLDER = os.path.join(LOCAL_APP_DATA, "salesregister", "tally_companies")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 os.makedirs(TALLY_CACHE_FOLDER, exist_ok=True)
 
+# Migrate existing local cache to LOCALAPPDATA if available
+import shutil
+_old_cache_folder = os.path.join(BASE_DIR, "tally_companies")
+if os.path.exists(_old_cache_folder):
+    for _item in os.listdir(_old_cache_folder):
+        _src = os.path.join(_old_cache_folder, _item)
+        _dst = os.path.join(TALLY_CACHE_FOLDER, _item)
+        if os.path.isdir(_src) and not os.path.exists(_dst):
+            try:
+                shutil.copytree(_src, _dst)
+            except Exception:
+                pass
+
 def get_tally_cache_folder():
-    """Keep sync data beside the app so the server can always read and write it."""
+    """Returns the persistent Tally company cache directory in LocalAppData."""
     os.makedirs(TALLY_CACHE_FOLDER, exist_ok=True)
     return TALLY_CACHE_FOLDER
 

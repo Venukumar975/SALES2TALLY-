@@ -108,7 +108,7 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
             
     return len(parties)
 
-def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_row, company_name, under, units, supply_type, products):
+def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_row, company_name, under, units, supply_type, products, uom_col=None):
     """
     Infers HSN and GST rate from Excel data, constructs XML, and creates Stock Items in Tally.
     Updates local stock item cache upon completion.
@@ -119,11 +119,10 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
         raise ValueError("Products list is required")
         
     under = (under or "Primary").strip()
-    units = (units or "Nos").strip()
+    default_units = (units or "Nos").strip()
     supply_type = (supply_type or "Goods").strip()
     
     under_xml = escape_xml_value(under)
-    units_xml = escape_xml_value(units)
     supply_type_xml = escape_xml_value(supply_type)
     
     headers, df_data = find_headers_and_df(file_path, sheet_name, header_row=header_row)
@@ -134,6 +133,7 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
     cgst_col = mappings.get("CGST Amount")
     sgst_col = mappings.get("SGST Amount")
     igst_col = mappings.get("IGST Amount")
+    uom_col = uom_col or mappings.get("UOM")
     
     masters_body = ""
     for prod_name in products:
@@ -153,6 +153,7 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
         sgst_amt = 0.0
         igst_amt = 0.0
         
+        item_units = default_units
         if prod_row is not None:
             if hsn_col and hsn_col in df_data.columns:
                 hsn_code = str(prod_row.get(hsn_col, "")).strip().split(".")[0]
@@ -160,9 +161,14 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
             cgst_amt = to_float(prod_row.get(cgst_col, 0))
             sgst_amt = to_float(prod_row.get(sgst_col, 0))
             igst_amt = to_float(prod_row.get(igst_col, 0))
+            # Resolve per-item unit from UOM column if available
+            if uom_col and uom_col in df_data.columns:
+                raw_uom = str(prod_row.get(uom_col, "")).strip()
+                if raw_uom and raw_uom.lower() not in ("nan", "none", "null", ""):
+                    item_units = raw_uom
             
         if not hsn_code or hsn_code.lower() in ("nan", "none", "null"):
-            hsn_code = "00000000"
+            hsn_code = ""
 
         prod_name_xml = escape_xml_value(prod_name)
         hsn_code_xml = escape_xml_value(hsn_code)
@@ -202,7 +208,7 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
       <STOCKITEM NAME="{prod_name_xml}" ACTION="Create">
         <NAME>{prod_name_xml}</NAME>
         {parent_tag}
-        <BASEUNITS>{units_xml}</BASEUNITS>
+        <BASEUNITS>{escape_xml_value(item_units)}</BASEUNITS>
         <GSTAPPLICABLE>{gst_app_status}</GSTAPPLICABLE>
         <GSTTYPEOFSUPPLY>{supply_type_xml}</GSTTYPEOFSUPPLY>
         <HSNDETAILS.LIST>

@@ -14,7 +14,7 @@
                 <div class="logo-icon">⇄</div>
                 <h1>Sales Register Automation Suite</h1>
             </div>
-            <p>Map external spreadsheets to standard sales registers automatically</p>
+            <p>Map and Import your excel spreadsheets to standard sales registers automatically</p>
         </div>
 
         <!-- CARD 1: EXCEL INPUT -->
@@ -182,9 +182,24 @@
                         <span>Check Product Names</span>
                         <div class="loader" id="check-products-loader" style="margin-left: 8px;"></div>
                     </button>
+                    <button class="btn" id="btn-check-units" onclick="checkUnits()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: flex; justify-content: center; align-items: center;">
+                        <span>Check Units</span>
+                        <div class="loader" id="check-units-loader" style="margin-left: 8px;"></div>
+                    </button>
                 </div>
 
                 <div id="mapping-status" class="status-box status-error" style="display: none;"></div>
+
+                <!-- UNITS CHECK RESULTS REGION -->
+                <div id="units-check-results-container" style="display: none; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(139, 92, 246, 0.05); border-radius: 10px; padding: 16px; margin-top: 10px; flex-direction: column; gap: 12px;">
+                    <div style="font-weight: 700; color: #a78bfa; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <span>📐 Detected Unit(s) of Measure in Excel</span>
+                    </div>
+                    <div id="units-badge-list" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"></div>
+                    <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 10px 14px; font-size: 0.82rem; color: #ca8a04; line-height: 1.5;">
+                        ⚠️ <strong>Important Requirement:</strong> Please make sure all detected Unit(s) above are already created as <strong>Units of Measure</strong> in your Tally Prime company. The app will not auto-create units — it will assign each stock item under its proper unit when importing.
+                    </div>
+                </div>
 
                 <!-- PARTY CHECK RESULTS REGION -->
                 <div id="party-check-results-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px; flex-direction: column; gap: 20px;">
@@ -401,9 +416,15 @@
               <input type="text" id="new_item_under" value="Primary" placeholder="Enter stock group name (e.g. Primary)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label for="new_item_units" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Unit of Measure (Units):</label>
-              <input type="text" id="new_item_units" value="Nos" placeholder="Enter units (e.g. Nos, Pcs)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Detected Unit(s) in Excel:</label>
+              <div id="detected-units-display" style="min-height: 45px; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; background: rgba(0,0,0,0.15); display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No UOM column mapped</span>
+              </div>
             </div>
+          </div>
+
+          <div id="units-warning-box" style="display: none; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #ca8a04; line-height: 1.5;">
+            ⚠️ <strong>Before creating items:</strong> Make sure all unit(s) shown above are already created as <strong>Units of Measure</strong> in your Tally Prime company. The app will not create them — only use them.
           </div>
           
           <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
@@ -435,13 +456,13 @@
     </div>
 
     <!-- Modular Frontend JavaScript Files -->
-    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/mapping.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/tally.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/verification.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/generator.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/upload.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/mapping.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/tally.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/verification.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/generator.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.1"></script>
 </body>
 </html>
