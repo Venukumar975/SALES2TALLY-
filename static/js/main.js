@@ -1,6 +1,8 @@
 // Main Application Entry Point & DOM Event Wiring
 
 document.addEventListener("DOMContentLoaded", () => {
+    checkLicenseHealth();
+    setInterval(checkLicenseHealth, 5000);
     loadSyncedCompanies();
 
     // Drag and drop event handlers
@@ -127,3 +129,35 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === createItemsModal) createItemsModal.style.display = "none";
     });
 });
+
+async function checkLicenseHealth() {
+    try {
+        const res = await fetch("/api/license/status");
+        const data = await res.json();
+        const pill = document.getElementById("header-license-pill");
+        const text = document.getElementById("header-license-text");
+        
+        if (!pill || !text) return;
+        
+        if (!data.is_valid) {
+            window.location.href = "/login";
+            return;
+        }
+        
+        if (data.type === "LIFETIME") {
+            text.innerText = "Lifetime Active";
+            pill.style.borderColor = "rgba(16, 185, 129, 0.4)";
+            pill.style.color = "#34d399";
+        } else {
+            const mins = Math.ceil((data.remaining_seconds || 0) / 60);
+            text.innerText = `${data.type} (${mins}m remaining)`;
+            if (mins <= 5) {
+                pill.style.borderColor = "rgba(239, 68, 68, 0.4)";
+                pill.style.color = "#f87171";
+            }
+        }
+    } catch (e) {
+        console.error("License check error:", e);
+    }
+}
+

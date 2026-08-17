@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Registration - Sales Register Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle at 50% 10%, #1e1b4b 0%, #09090b 80%);
+        }
+        .login-card {
+            background: rgba(18, 18, 24, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 540px;
+            padding: 36px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+        .header-section {
+            text-align: center;
+        }
+        .header-section h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .header-section p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .hwid-container {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .hwid-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #818cf8;
+            letter-spacing: 1.5px;
+        }
+        .copy-btn {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #c7d2fe;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            background: rgba(99, 102, 241, 0.4);
+            color: #ffffff;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            align-self: flex-start;
+        }
+        .status-missing {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .status-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .status-expired {
+            background: rgba(234, 179, 8, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .key-input {
+            width: 100%;
+            height: 95px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            resize: none;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .key-input:focus {
+            border-color: var(--accent-primary);
+        }
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn-activate {
+            background: linear-gradient(135deg, var(--accent-primary), #4338ca);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-activate:hover {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-login {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-login:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="header-section">
+        <h1>Sales Register Suite</h1>
+        <p>Offline License Registration & Activation</p>
+    </div>
+
+    <!-- Machine HWID Section -->
+    <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; display: block;">
+            Your Machine Signature (HWID):
+        </label>
+        <div class="hwid-container">
+            <span id="hwid-display" class="hwid-text">{{ hwid or 'DETECTING...' }}</span>
+            <button class="copy-btn" onclick="copyHWID()">Copy HWID</button>
+        </div>
+    </div>
+
+    <!-- License Status Display -->
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span id="status-badge" class="status-badge status-missing">● Checking License...</span>
+        <span id="expiry-display" style="font-size: 0.82rem; color: var(--text-muted);"></span>
+    </div>
+
+    <!-- License Key Input Section -->
+    <div>
+        <label for="license-key-input" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; display: block;">
+            Enter License Key:
+        </label>
+        <textarea id="license-key-input" class="key-input" placeholder="Paste your SRLIC-... key here"></textarea>
+    </div>
+
+    <div id="login-status-box" class="status-box status-error" style="display: none;"></div>
+
+    <!-- Action Buttons -->
+    <div class="action-btns">
+        <button id="btn-activate-action" class="btn-activate" onclick="submitActivation()">
+            <span>Activate & Login</span>
+            <div class="loader" id="activate-loader" style="margin-left: 8px; display: none;"></div>
+        </button>
+        <button id="btn-verify-login" class="btn-login" onclick="verifyAndLogin()">
+            <span>Verify Existing License & Login</span>
+        </button>
+    </div>
+</div>
+
+<script>
+async function loadStatus() {
+    try {
+        const res = await fetch("/api/license/status");
+        const data = await res.json();
+        
+        document.getElementById("hwid-display").innerText = data.hwid || "UNKNOWN";
+        
+        const badge = document.getElementById("status-badge");
+        const exp = document.getElementById("expiry-display");
+
+        if (data.is_valid) {
+            badge.className = "status-badge status-active";
+            badge.innerText = `● Active (${data.type})`;
+            exp.innerText = `Expires: ${data.expiry_text}`;
+            // If already valid, auto redirect
+            window.location.href = "/";
+        } else if (data.status === "expired") {
+            badge.className = "status-badge status-expired";
+            badge.innerText = "● License Expired";
+            exp.innerText = `Expired on: ${data.expiry_text}`;
+        } else {
+            badge.className = "status-badge status-missing";
+            badge.innerText = "● No Active License";
+            exp.innerText = "";
+        }
+    } catch (e) {
+        console.error("Failed to load status:", e);
+    }
+}
+
+function copyHWID() {
+    const hwid = document.getElementById("hwid-display").innerText;
+    navigator.clipboard.writeText(hwid);
+    alert("Machine Signature copied to clipboard:\n" + hwid);
+}
+
+async function submitActivation() {
+    const key = document.getElementById("license-key-input").value.trim();
+    const statusBox = document.getElementById("login-status-box");
+    const loader = document.getElementById("activate-loader");
+    const btn = document.getElementById("btn-activate-action");
+
+    if (!key) {
+        statusBox.style.display = "block";
+        statusBox.className = "status-box status-error";
+        statusBox.innerText = "Please paste your License Key first.";
+        return;
+    }
+
+    loader.style.display = "inline-block";
+    btn.disabled = true;
+    statusBox.style.display = "none";
+
+    try {
+        const res = await fetch("/api/license/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ license_key: key })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            statusBox.style.display = "block";
+            statusBox.className = "status-box status-success";
+            statusBox.innerText = "✓ License Activated Successfully! Redirecting...";
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 1000);
+        } else {
+            statusBox.style.display = "block";
+            statusBox.className = "status-box status-error";
+            statusBox.innerText = `❌ ${data.error}`;
+        }
+    } catch (err) {
+        statusBox.style.display = "block";
+        statusBox.className = "status-box status-error";
+        statusBox.innerText = `❌ Network error: ${err.message}`;
+    } finally {
+        loader.style.display = "none";
+        btn.disabled = false;
+    }
+}
+
+async function verifyAndLogin() {
+    const statusBox = document.getElementById("login-status-box");
+    try {
+        const res = await fetch("/api/license/verify-login", { method: "POST" });
+        const data = await res.json();
+        if (data.success) {
+            window.location.href = data.redirect || "/";
+        } else {
+            statusBox.style.display = "block";
+            statusBox.className = "status-box status-error";
+            statusBox.innerText = `❌ ${data.error}`;
+        }
+    } catch (err) {
+        statusBox.style.display = "block";
+        statusBox.className = "status-box status-error";
+        statusBox.innerText = `❌ Error: ${err.message}`;
+    }
+}
+
+// Initial status load
+loadStatus();
+</script>
+
+</body>
+</html>
