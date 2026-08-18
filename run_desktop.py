@@ -13,6 +13,9 @@ LOG_FILE = os.path.join(LOG_DIR, "app.log")
 
 try:
     os.makedirs(LOG_DIR, exist_ok=True)
+    # Clear previous logs on startup so each session starts fresh
+    with open(LOG_FILE, "w", encoding="utf-8") as f:
+        f.write("")
 except Exception:
     pass
 

@@ -134,6 +134,14 @@ class DesktopAPI:
 
 def main():
     """Launch Flask server and native Desktop UI window."""
+    from config import APP_DATA_DIR
+    # Reset log file on app startup if running directly
+    try:
+        log_path = os.path.join(APP_DATA_DIR, "app.log")
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("")
+    except Exception:
+        pass
     _log_app("app.main() invoked. Performing initial temp cleanup...")
     cleanup_temp_files()
     port_no = find_available_port(5005)

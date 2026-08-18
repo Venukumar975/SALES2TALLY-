@@ -62,7 +62,7 @@ def fetch_live_party_details(company_name):
       </BODY>
     </ENVELOPE>"""
     try:
-        r = requests.post(TALLY_URL, data=envelope.encode('utf-8'), timeout=120)
+        r = requests.post(TALLY_URL, data=envelope.encode('utf-8'), timeout=1200)
         if r.status_code != 200:
             return {}
         cleaned_bytes = clean_tally_xml(r.content)
