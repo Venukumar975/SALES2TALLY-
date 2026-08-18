@@ -8,14 +8,15 @@ from utils.helpers import (
     find_headers_and_df, clean_date_cell, clean_text_cell,
     filter_df_by_date_range, to_float, custom_round
 )
-from utils.matching import find_matching_ledger
-from services.tally_ledger_service import get_cached_ledgers
+from utils.matching import find_matching_ledger, clean_and_resolve_state
+from services.tally_ledger_service import get_cached_ledgers, fetch_live_party_details
 from services.master_creator import escape_xml_value
 
 def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filename, ledger_company, xml_company_name, sales_ledger_name, misc_ledger_name, header_row=None, from_date=None, to_date=None, tax_ledger_mappings=None):
     """
     Groups multi-item sales register records by Invoice No and builds Tally Prime Import XML Vouchers.
     Balances debit and credit using exact commercial half-up rounding and Misc offset.
+    Fetches live party metadata (State, GSTIN, Registration Type) directly from Tally Prime.
     """
     if tax_ledger_mappings is None:
         tax_ledger_mappings = {}
@@ -45,6 +46,10 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
     xml_filename = f"{base_name}_vouchers.xml"
     xml_path = os.path.join(PROCESSED_FOLDER, xml_filename)
 
+    # Fetch live party details directly from Tally Prime for the target company
+    target_company = (xml_company_name or ledger_company or "").strip()
+    live_parties_map = fetch_live_party_details(target_company)
+
     # Group records by Invoice No
     grouped = df_std.groupby("Invoice No", sort=False)
     tally_messages = ""
@@ -67,6 +72,25 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
 
         party_name = first_row.get("Party Name", "Cash")
         party_name_clean = escape_xml_value(party_name)
+
+        # Retrieve live party details fetched from Tally Prime
+        party_meta = live_parties_map.get(party_name.lower().strip(), {})
+        buyer_name = party_meta.get("name") or party_name
+        party_state = party_meta.get("state") or ""
+        country_name = party_meta.get("country") or "India"
+        reg_type = party_meta.get("registration_type") or "Unregistered"
+        gstin_no = party_meta.get("gstin") or ""
+
+        # Place of supply is the state of the party name
+        place_of_supply = party_state
+
+        state_tags = ""
+        if party_state:
+            state_tags = f"""
+        <STATENAME>{escape_xml_value(party_state)}</STATENAME>
+        <PLACEOFSUPPLY>{escape_xml_value(place_of_supply)}</PLACEOFSUPPLY>"""
+
+        gstin_tag = f"\n        <PARTYGSTIN>{escape_xml_value(gstin_no)}</PARTYGSTIN>" if gstin_no else ""
         
         # Accumulate inventory lines and totals
         inventory_entries = ""
@@ -198,9 +222,16 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
     <TALLYMESSAGE xmlns:UDF="TallyUDF">
       <VOUCHER VCHTYPE="Sales" ACTION="Create">
         <DATE>{date_tally}</DATE>
+        <EFFECTIVEDATE>{date_tally}</EFFECTIVEDATE>
         <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
         <VOUCHERNUMBER>{escape_xml_value(inv_no_str)}</VOUCHERNUMBER>
+        <REFERENCE>{escape_xml_value(inv_no_str)}</REFERENCE>
+        <REFERENCEDATE>{date_tally}</REFERENCEDATE>
+        <ISINVOICE>Yes</ISINVOICE>
         <PARTYLEDGERNAME>{party_name_clean}</PARTYLEDGERNAME>
+        <PARTYNAME>{escape_xml_value(buyer_name)}</PARTYNAME>{state_tags}{gstin_tag}
+        <COUNTRYOFRESIDENCE>{escape_xml_value(country_name)}</COUNTRYOFRESIDENCE>
+        <GSTREGISTRATIONTYPE>{escape_xml_value(reg_type)}</GSTREGISTRATIONTYPE>
         <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
         <NARRATION>{escape_xml_value(narration_text)}</NARRATION>
         {ledger_entries_xml}

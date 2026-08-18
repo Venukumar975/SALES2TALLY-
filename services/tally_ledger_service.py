@@ -28,6 +28,89 @@ def clean_tally_xml(content_bytes):
     cleaned = re.sub(r'&#x?[0-9a-fA-F]+;', repl, text)
     return cleaned.encode("utf-8", errors="ignore")
 
+def fetch_live_party_details(company_name):
+    """
+    Directly query Tally Prime on port 9000 for company_name and return
+    a live in-memory dictionary of all ledgers with State, Country,
+    Registration Type, and GSTIN.
+    """
+    if not company_name:
+        return {}
+    company_name = company_name.strip()
+    envelope = f"""<ENVELOPE>
+      <HEADER>
+        <VERSION>1</VERSION>
+        <TALLYREQUEST>Export Data</TALLYREQUEST>
+        <TYPE>Collection</TYPE>
+        <ID>DetailedLedgers</ID>
+      </HEADER>
+      <BODY>
+        <DESC>
+          <STATICVARIABLES>
+            <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+            <SVCURRENTCOMPANY>{company_name}</SVCURRENTCOMPANY>
+          </STATICVARIABLES>
+          <TDL>
+            <TDLMESSAGE>
+              <COLLECTION NAME="DetailedLedgers">
+                <TYPE>Ledger</TYPE>
+                <FETCH>NAME,PARENT,COUNTRYNAME,COUNTRYOFRESIDENCE,LEDSTATENAME,STATENAME,GSTREGISTRATIONTYPE,PARTYGSTIN,PINCODE,LEDMAILINGDETAILS.*,LEDGSTREGDETAILS.*</FETCH>
+              </COLLECTION>
+            </TDLMESSAGE>
+          </TDL>
+        </DESC>
+      </BODY>
+    </ENVELOPE>"""
+    try:
+        r = requests.post(TALLY_URL, data=envelope.encode('utf-8'), timeout=120)
+        if r.status_code != 200:
+            return {}
+        cleaned_bytes = clean_tally_xml(r.content)
+        root = ET.fromstring(cleaned_bytes)
+        ledgers_map = {}
+        for ledger in root.findall(".//LEDGER"):
+            name = ledger.get("NAME", "").strip()
+            if not name:
+                name_elem = ledger.find("NAME")
+                if name_elem is not None and name_elem.text:
+                    name = name_elem.text.strip()
+            if not name:
+                continue
+
+            state = (ledger.findtext("LEDSTATENAME") or ledger.findtext("STATENAME") or "").strip()
+            country = (ledger.findtext("COUNTRYNAME") or ledger.findtext("COUNTRYOFRESIDENCE") or "India").strip()
+            reg_type = (ledger.findtext("GSTREGISTRATIONTYPE") or "").strip()
+            gstin = (ledger.findtext("PARTYGSTIN") or "").strip()
+
+            mailing = ledger.find(".//LEDMAILINGDETAILS.LIST")
+            if mailing is not None:
+                if not state:
+                    state = (mailing.findtext("STATE") or "").strip()
+                if not country or country == "India":
+                    c = (mailing.findtext("COUNTRY") or "").strip()
+                    if c: country = c
+
+            gst_reg = ledger.find(".//LEDGSTREGDETAILS.LIST")
+            if gst_reg is not None:
+                if not reg_type:
+                    reg_type = (gst_reg.findtext("GSTREGISTRATIONTYPE") or "").strip()
+                if not gstin:
+                    gstin = (gst_reg.findtext("GSTIN") or "").strip()
+                if not state:
+                    pos = (gst_reg.findtext("PLACEOFSUPPLY") or "").strip()
+                    if pos: state = pos
+
+            ledgers_map[name.lower()] = {
+                "name": name,
+                "state": state,
+                "country": country if country else "India",
+                "registration_type": reg_type if reg_type else ("Regular" if gstin else "Unregistered"),
+                "gstin": gstin
+            }
+        return ledgers_map
+    except Exception:
+        return {}
+
 def sync_ledgers_from_tally(company_name):
     """
     Connect to Tally Prime on port 9000 and export all accounting Ledgers.
