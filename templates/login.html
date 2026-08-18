@@ -192,7 +192,7 @@
 
     <!-- License Key Input Section -->
     <div>
-        <label for="license-key-input" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; display: block;">
+        <label id="license-key-label" for="license-key-input" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; display: block;">
             Enter License Key:
         </label>
         <textarea id="license-key-input" class="key-input" placeholder="Paste your SRLIC-... key here"></textarea>
@@ -222,21 +222,54 @@ async function loadStatus() {
         
         const badge = document.getElementById("status-badge");
         const exp = document.getElementById("expiry-display");
+        const verifyBtn = document.getElementById("btn-verify-login");
+        const activateBtn = document.getElementById("btn-activate-action");
+        const keyInput = document.getElementById("license-key-input");
+        const keyLabel = document.getElementById("license-key-label");
 
         if (data.is_valid) {
             badge.className = "status-badge status-active";
             badge.innerText = `● Active (${data.type})`;
             exp.innerText = `Expires: ${data.expiry_text}`;
-            // If already valid, auto redirect
-            window.location.href = "/";
+            
+            // Hide Activate button when valid
+            activateBtn.style.display = "none";
+            
+            // Populate license key container
+            keyInput.value = data.license_key || "";
+            keyInput.readOnly = true;
+            keyLabel.innerText = "Active License Key (Registered):";
+            
+            // Primary single Login Button
+            verifyBtn.style.background = "linear-gradient(135deg, #10b981, #059669)";
+            verifyBtn.style.color = "#ffffff";
+            verifyBtn.innerHTML = `<span>✓ License Active — Click to Login</span>`;
         } else if (data.status === "expired") {
             badge.className = "status-badge status-expired";
             badge.innerText = "● License Expired";
             exp.innerText = `Expired on: ${data.expiry_text}`;
+            
+            // Show both buttons and clear textarea for new key
+            activateBtn.style.display = "inline-flex";
+            keyInput.value = "";
+            keyInput.readOnly = false;
+            keyLabel.innerText = "Enter New License Key:";
+            verifyBtn.style.background = "";
+            verifyBtn.style.color = "";
+            verifyBtn.innerHTML = `<span>Verify Existing License & Login</span>`;
         } else {
             badge.className = "status-badge status-missing";
             badge.innerText = "● No Active License";
             exp.innerText = "";
+            
+            // Show both buttons and clean state
+            activateBtn.style.display = "inline-flex";
+            keyInput.value = "";
+            keyInput.readOnly = false;
+            keyLabel.innerText = "Enter License Key:";
+            verifyBtn.style.background = "";
+            verifyBtn.style.color = "";
+            verifyBtn.innerHTML = `<span>Verify Existing License & Login</span>`;
         }
     } catch (e) {
         console.error("Failed to load status:", e);
@@ -277,10 +310,10 @@ async function submitActivation() {
         if (data.success) {
             statusBox.style.display = "block";
             statusBox.className = "status-box status-success";
-            statusBox.innerText = "✓ License Activated Successfully! Redirecting...";
+            statusBox.innerText = "✓ License Activated Successfully! Entering Application...";
             setTimeout(() => {
                 window.location.href = "/";
-            }, 1000);
+            }, 600);
         } else {
             statusBox.style.display = "block";
             statusBox.className = "status-box status-error";
@@ -298,11 +331,19 @@ async function submitActivation() {
 
 async function verifyAndLogin() {
     const statusBox = document.getElementById("login-status-box");
+    const btn = document.getElementById("btn-verify-login");
+    btn.disabled = true;
+
     try {
         const res = await fetch("/api/license/verify-login", { method: "POST" });
         const data = await res.json();
         if (data.success) {
-            window.location.href = data.redirect || "/";
+            statusBox.style.display = "block";
+            statusBox.className = "status-box status-success";
+            statusBox.innerText = "✓ License Verified! Entering SALES2TALLY...";
+            setTimeout(() => {
+                window.location.href = data.redirect || "/";
+            }, 400);
         } else {
             statusBox.style.display = "block";
             statusBox.className = "status-box status-error";
@@ -312,6 +353,8 @@ async function verifyAndLogin() {
         statusBox.style.display = "block";
         statusBox.className = "status-box status-error";
         statusBox.innerText = `❌ Error: ${err.message}`;
+    } finally {
+        btn.disabled = false;
     }
 }
 

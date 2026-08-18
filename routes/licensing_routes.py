@@ -13,9 +13,6 @@ licensing_bp = Blueprint("licensing_bp", __name__)
 def login_page():
     """Render the License Registration & Login page."""
     status = get_current_license_status()
-    # If already valid, redirect directly to dashboard
-    if status.get("is_valid"):
-        return redirect(url_for("main_bp.index"))
     return render_template("login.html", hwid=status.get("hwid"))
 
 @licensing_bp.route("/api/license/status", methods=["GET"])

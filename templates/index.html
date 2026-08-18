@@ -413,47 +413,45 @@
           <h2>Create Missing Stock Items in Tally</h2>
           <span class="modal-close-x" id="close-create-items-modal-x">&times;</span>
         </div>
-        <div class="modal-body" style="display: flex; flex-direction: column; gap: 15px;">
-          <p class="modal-instructions">These products were found in your Excel sheet but are missing from Tally's Item Stock.</p>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 22px; background: #ffffff;">
+          <p class="modal-instructions" style="margin-bottom: 0; color: #334155; font-size: 0.92rem;">These products were found in your Excel sheet but are missing from Tally's Item Stock.</p>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label for="new_item_under" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Stock Group (Under):</label>
-              <input type="text" id="new_item_under" value="Primary" placeholder="Enter stock group name (e.g. Primary)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
+              <label for="new_item_under" style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Stock Group (Under):</label>
+              <input type="text" id="new_item_under" value="Primary" placeholder="Enter stock group (e.g. Primary)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; background: #ffffff; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box;">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Detected Unit(s) in Excel:</label>
-              <div id="detected-units-display" style="min-height: 45px; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; background: rgba(0,0,0,0.15); display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
-                <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No UOM column mapped</span>
+              <label style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Detected Unit(s) in Excel:</label>
+              <div id="detected-units-display" style="min-height: 44px; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #f8fafc; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; box-sizing: border-box;">
+                <span style="font-size: 0.82rem; color: #64748b; font-style: italic;">No UOM column mapped</span>
               </div>
             </div>
           </div>
 
-          <div id="units-warning-box" style="display: none; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #ca8a04; line-height: 1.5;">
+          <div id="units-warning-box" style="display: none; background: #fefce8; border: 1.5px solid #fde047; border-radius: 6px; padding: 10px 14px; font-size: 0.84rem; color: #713f12; line-height: 1.5;">
             ⚠️ <strong>Before creating items:</strong> Make sure all unit(s) shown above are already created as <strong>Units of Measure</strong> in your Tally Prime company. The app will not create them — only use them.
           </div>
           
           <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="new_item_supply_type" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Type of Supply:</label>
-            <div class="select-wrapper">
-              <select id="new_item_supply_type" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none;">
-                <option value="Goods">Goods</option>
-                <option value="Services">Services</option>
-                <option value="Capital Goods">Capital Goods</option>
-              </select>
-            </div>
+            <label for="new_item_supply_type" style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Type of Supply:</label>
+            <select id="new_item_supply_type" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; background: #ffffff; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box;">
+              <option value="Goods">Goods</option>
+              <option value="Services">Services</option>
+              <option value="Capital Goods">Capital Goods</option>
+            </select>
           </div>
 
-          <div style="margin-top: 10px;">
-            <label style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: block; font-size: 0.85rem;">Items to be Created:</label>
-            <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; background: rgba(0,0,0,0.2);">
+          <div>
+            <label style="font-weight: 700; color: #0f172a; margin-bottom: 6px; display: block; font-size: 0.85rem;">Items to be Created:</label>
+            <div style="max-height: 190px; overflow-y: auto; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px; background: #f8fafc;">
               <ul id="missing-items-list-modal" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;"></ul>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="padding: 14px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
           <button class="close-modal-btn" id="close-create-items-modal-btn">Close</button>
-          <button class="start-sync-btn" id="btn-create-items-action" style="background: linear-gradient(135deg, var(--accent-success), #047857);" onclick="submitCreateStockItems()">
+          <button class="start-sync-btn" id="btn-create-items-action" onclick="submitCreateStockItems()">
              <span>Create Items</span>
              <div class="loader" id="create-items-loader" style="margin-left: 8px;"></div>
           </button>

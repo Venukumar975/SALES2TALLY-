@@ -7,7 +7,7 @@ from utils.helpers import (
     find_headers_and_df, clean_text_cell, clean_gst_cell,
     filter_df_by_date_range, parse_date_to_comparable, to_float
 )
-from utils.matching import find_matching_ledger, get_word_match_score
+from utils.matching import find_matching_ledger, get_word_match_score, clean_and_resolve_state
 from services.tally_ledger_service import get_cached_ledgers
 from services.tally_stock_service import get_cached_stock
 
@@ -170,13 +170,23 @@ def api_check_parties():
             state_val = ""
             gstin_val = ""
             if not row_match.empty:
-                first_row = row_match.iloc[0]
-                src_state_col = mappings.get("State Name")
-                if src_state_col and src_state_col in df_data.columns:
-                    state_val = clean_text_cell(first_row[src_state_col])
                 src_gstin_col = mappings.get("GST no")
                 if src_gstin_col and src_gstin_col in df_data.columns:
-                    gstin_val = clean_gst_cell(first_row[src_gstin_col])
+                    for g in row_match[src_gstin_col].apply(clean_gst_cell).dropna():
+                        g_str = str(g).strip()
+                        if g_str and g_str.lower() not in ("nan", "none", "null", "-", "na"):
+                            gstin_val = g_str
+                            break
+
+                src_state_col = mappings.get("State Name")
+                if src_state_col and src_state_col in df_data.columns:
+                    for s in row_match[src_state_col].apply(clean_text_cell).dropna():
+                        s_str = str(s).strip()
+                        if s_str and s_str.lower() not in ("nan", "none", "null", "-", "na"):
+                            state_val = s_str
+                            break
+
+            state_val = clean_and_resolve_state(state_val, gstin_val)
             
             if tally_ledgers:
                 for l in tally_ledgers:

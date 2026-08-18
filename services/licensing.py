@@ -18,7 +18,10 @@ SECRET_KEY = b"SALES_REG_2026_MASTER_SECRET_KEY_99a8b7c6d5e4f3"
 LICENSE_DIR = os.path.join(LOCAL_APP_DATA, "SALES2TALLY")
 LICENSE_FILE = os.path.join(LICENSE_DIR, "license.lic")
 
-# Global in-memory license status flag
+# Global in-memory license status flag and monotonic session clock
+_APP_START_MONOTONIC = time.monotonic()
+_APP_START_WALLCLOCK = int(time.time())
+
 _LICENSE_STATE = {
     "is_valid": False,
     "status": "uninitialized",
@@ -139,7 +142,7 @@ def _deobfuscate_license(encoded_str: str, hwid: str) -> dict:
     return json.loads(raw_bytes.decode("utf-8"))
 
 def save_license_file(payload: dict, signature: str):
-    """Save verified license payload and signature to %LOCALAPPDATA%\\salesregister\\license.lic in obfuscated format."""
+    """Save verified license payload and signature to %LOCALAPPDATA%\\SALES2TALLY\\license.lic in obfuscated format atomically."""
     os.makedirs(LICENSE_DIR, exist_ok=True)
     hwid = str(payload.get("hwid", "")).strip().upper() or get_machine_hwid()
     
@@ -150,12 +153,14 @@ def save_license_file(payload: dict, signature: str):
     }
     
     encoded_blob = _obfuscate_license(data, hwid)
-    with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+    tmp_file = f"{LICENSE_FILE}.tmp"
+    with open(tmp_file, "w", encoding="utf-8") as f:
         f.write(encoded_blob)
+    os.replace(tmp_file, LICENSE_FILE)
 
 def read_and_validate_local_license(current_hwid: str = None):
     """
-    Inspect the local license file in %LOCALAPPDATA%\\salesregister\\license.lic
+    Inspect the local license file in %LOCALAPPDATA%\\SALES2TALLY\\license.lic
     Returns (is_valid, status_code, message, payload)
     """
     if current_hwid is None:
@@ -168,6 +173,9 @@ def read_and_validate_local_license(current_hwid: str = None):
         with open(LICENSE_FILE, "r", encoding="utf-8") as f:
             raw_content = f.read().strip()
             
+        if not raw_content:
+            return False, "missing", "No active license found on this machine.", None
+
         # Support both obfuscated blob and legacy JSON if present
         if raw_content.startswith("{"):
             data = json.loads(raw_content)
@@ -205,14 +213,17 @@ def read_and_validate_local_license(current_hwid: str = None):
     if expiry_ts == 0 or lic_type == "LIFETIME":
         return True, "active", "Lifetime license is active.", payload
 
-    # For Demo / Time-Limited Licenses: Enforce clock rollback detection and expiration limits
-    now_ts = int(time.time())
-    if last_seen > 0 and (last_seen - now_ts) > 120:
+    # For Demo / Time-Limited Licenses: Enforce expiration limits and clock rollback detection
+    elapsed_session = int(time.monotonic() - _APP_START_MONOTONIC)
+    now_ts = max(int(time.time()), _APP_START_WALLCLOCK + elapsed_session)
+
+    if last_seen > 0 and (last_seen - int(time.time())) > 120:
         return False, "clock_rollback", "System clock manipulation detected. Please correct your date and time.", payload
 
     if now_ts > expiry_ts:
         return False, "expired", "Your license demo/subscription period has expired.", payload
 
+    payload["_signature"] = sig
     return True, "active", "License is valid and active.", payload
 
 def get_current_license_status():
@@ -224,14 +235,24 @@ def get_current_license_status():
     remaining_secs = 0
     lic_type = "NONE"
     client_name = ""
+    raw_key = ""
 
     if payload:
         lic_type = payload.get("type", "DEMO")
         client_name = payload.get("client", "")
         expiry_ts = payload.get("expiry_at", 0)
+        sig = payload.get("_signature", "")
+        
+        if is_valid and sig:
+            clean_p = {k: v for k, v in payload.items() if not k.startswith("_")}
+            payload_json = json.dumps(clean_p, sort_keys=True)
+            payload_b64 = base64.urlsafe_b64encode(payload_json.encode("utf-8")).decode("utf-8")
+            raw_key = f"SRLIC.{payload_b64}.{sig}"
+
         if expiry_ts > 0 and lic_type != "LIFETIME":
-            now_ts = int(time.time())
-            remaining_secs = max(0, expiry_ts - now_ts)
+            elapsed_session = int(time.monotonic() - _APP_START_MONOTONIC)
+            effective_now = max(int(time.time()), _APP_START_WALLCLOCK + elapsed_session)
+            remaining_secs = max(0, expiry_ts - effective_now)
             expiry_text = datetime.fromtimestamp(expiry_ts).strftime("%d-%b-%Y %I:%M:%S %p")
         else:
             expiry_text = "Never (Lifetime)"
@@ -246,33 +267,12 @@ def get_current_license_status():
         _LICENSE_STATE["client"] = client_name
         _LICENSE_STATE["remaining_seconds"] = remaining_secs
         _LICENSE_STATE["message"] = msg
+        _LICENSE_STATE["license_key"] = raw_key
 
     return _LICENSE_STATE.copy()
 
 def update_last_seen_heartbeat():
-    """Periodically writes last_seen_time and re-evaluates expiry status only for Demo/Time-limited licenses."""
-    current_hwid = get_machine_hwid()
-    is_valid, status, msg, payload = read_and_validate_local_license(current_hwid)
-    
-    expiry_ts = int(payload.get("expiry_at", 0)) if payload else 0
-    lic_type = str(payload.get("type", "")).upper() if payload else ""
-
-    # Lifetime licenses do NOT write to disk or track heartbeat
-    if is_valid and (expiry_ts > 0 and lic_type != "LIFETIME") and os.path.exists(LICENSE_FILE):
-        try:
-            with open(LICENSE_FILE, "r", encoding="utf-8") as f:
-                raw_content = f.read().strip()
-            if raw_content.startswith("{"):
-                data = json.loads(raw_content)
-            else:
-                data = _deobfuscate_license(raw_content, current_hwid)
-            data["last_seen_time"] = int(time.time())
-            new_blob = _obfuscate_license(data, current_hwid)
-            with open(LICENSE_FILE, "w", encoding="utf-8") as f:
-                f.write(new_blob)
-        except Exception:
-            pass
-
+    """Periodically re-evaluates license state in memory."""
     get_current_license_status()
 
 def _heartbeat_worker():

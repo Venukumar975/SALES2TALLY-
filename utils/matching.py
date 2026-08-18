@@ -1,5 +1,116 @@
 import re
 
+GST_STATE_MAP = {
+    "01": "Jammu & Kashmir",
+    "02": "Himachal Pradesh",
+    "03": "Punjab",
+    "04": "Chandigarh",
+    "05": "Uttarakhand",
+    "06": "Haryana",
+    "07": "Delhi",
+    "08": "Rajasthan",
+    "09": "Uttar Pradesh",
+    "10": "Bihar",
+    "11": "Sikkim",
+    "12": "Arunachal Pradesh",
+    "13": "Nagaland",
+    "14": "Manipur",
+    "15": "Mizoram",
+    "16": "Tripura",
+    "17": "Meghalaya",
+    "18": "Assam",
+    "19": "West Bengal",
+    "20": "Jharkhand",
+    "21": "Odisha",
+    "22": "Chhattisgarh",
+    "23": "Madhya Pradesh",
+    "24": "Gujarat",
+    "26": "Dadra & Nagar Haveli and Daman & Diu",
+    "27": "Maharashtra",
+    "29": "Karnataka",
+    "30": "Goa",
+    "31": "Lakshadweep",
+    "32": "Kerala",
+    "33": "Tamil Nadu",
+    "34": "Puducherry",
+    "35": "Andaman & Nicobar Islands",
+    "36": "Telangana",
+    "37": "Andhra Pradesh",
+    "38": "Ladakh",
+    "97": "Other Territory"
+}
+
+STATE_ALIAS_MAP = {
+    "ap": "Andhra Pradesh",
+    "andhra": "Andhra Pradesh",
+    "andhra pradesh": "Andhra Pradesh",
+    "ts": "Telangana",
+    "tg": "Telangana",
+    "telangana": "Telangana",
+    "ka": "Karnataka",
+    "karnataka": "Karnataka",
+    "tn": "Tamil Nadu",
+    "tamil nadu": "Tamil Nadu",
+    "tamilnadu": "Tamil Nadu",
+    "kl": "Kerala",
+    "kerala": "Kerala",
+    "mh": "Maharashtra",
+    "maharashtra": "Maharashtra",
+    "delhi": "Delhi",
+    "up": "Uttar Pradesh",
+    "uttar pradesh": "Uttar Pradesh",
+    "mp": "Madhya Pradesh",
+    "madhya pradesh": "Madhya Pradesh",
+    "wb": "West Bengal",
+    "west bengal": "West Bengal",
+    "gujarat": "Gujarat",
+    "gj": "Gujarat",
+    "odisha": "Odisha",
+    "orissa": "Odisha",
+    "punjab": "Punjab",
+    "pb": "Punjab",
+    "haryana": "Haryana",
+    "hr": "Haryana",
+    "rajasthan": "Rajasthan",
+    "rj": "Rajasthan",
+    "bihar": "Bihar",
+    "br": "Bihar"
+}
+
+def clean_and_resolve_state(state, gstin=""):
+    """
+    Standardize state name to Tally Prime standard names.
+    Supports state codes (e.g. '37-Andhra Pradesh'), aliases ('AP', 'TG'),
+    and falls back to resolving state from the first 2 digits of GSTIN if missing.
+    """
+    state_str = str(state or "").strip()
+    gstin_str = str(gstin or "").strip()
+    
+    # 1. Match code prefix like '37-Andhra Pradesh', '37 - AP', '37'
+    m_code = re.match(r"^(\d{2})\s*[-:]?\s*(.*)$", state_str)
+    if m_code:
+        code, rest = m_code.group(1), m_code.group(2).strip()
+        if code in GST_STATE_MAP:
+            return GST_STATE_MAP[code]
+        state_str = rest
+
+    # 2. Check alias mapping
+    st_clean = re.sub(r'[^a-zA-Z\s]', '', state_str).strip().lower()
+    if st_clean in STATE_ALIAS_MAP:
+        return STATE_ALIAS_MAP[st_clean]
+
+    for std_state in GST_STATE_MAP.values():
+        if st_clean == std_state.lower().replace('&', 'and') or st_clean == std_state.lower():
+            return std_state
+
+    # 3. Fallback to GSTIN first 2 digits if available
+    if gstin_str and len(gstin_str) >= 2:
+        g_code = gstin_str[:2]
+        if g_code in GST_STATE_MAP:
+            return GST_STATE_MAP[g_code]
+
+    return state_str
+
 def normalize_party_name(value):
     """Create a Tally-friendly party name from an Excel party name."""
     if value is None:

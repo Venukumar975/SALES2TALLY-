@@ -111,3 +111,12 @@ Sales & Purchase Registers/
 | [`static/js/verification.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/verification.js) | Customer party and product verification reports, missing item creation modal submissions. |
 | [`static/js/generator.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/generator.js) | Sales XML and Processed Excel generation requests and download link presentation. |
 | [`static/js/main.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/main.js) | DOMContentLoaded initialization, event listeners, and modal open/close wiring. |
+
+---
+
+## 6. Master Creation XML Specification Guide
+
+For complete technical specifications, exact XML tags, and field mappings for **Party Ledgers** and **Stock Items** in Tally Prime, see the dedicated reference guide:
+
+👉 **[TALLY_MASTER_MAPPING.md](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/TALLY_MASTER_MAPPING.md)**
+

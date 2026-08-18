@@ -478,19 +478,28 @@ input[type="text"]:focus {
     font-weight: 700;
 }
 
-.form-group input {
-    background-color: #ffffff;
-    border: 1.5px solid #000000; /* Dark black border */
-    border-radius: 4px;
-    padding: 10px 14px;
-    color: #0f172a;
-    font-size: 0.9rem;
-    width: 100%;
-    box-sizing: border-box;
+.form-group input,
+.modal-content input[type="text"],
+.modal-content select {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    padding: 10px 14px !important;
+    color: #0f172a !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-.form-group input::placeholder {
-    color: #94a3b8;
+.modal-content input::placeholder {
+    color: #94a3b8 !important;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+    border-color: #0c3162 !important;
+    outline: none !important;
 }
 
 .modal-footer {

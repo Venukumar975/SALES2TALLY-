@@ -305,12 +305,12 @@ function openCreateItemsModal() {
         lastDetectedUnits.forEach(unit => {
             const badge = document.createElement("span");
             badge.innerText = unit;
-            badge.style.cssText = "background: rgba(99,102,241,0.15); color: var(--accent-primary); border: 1px solid rgba(99,102,241,0.35); border-radius: 20px; padding: 3px 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;";
+            badge.style.cssText = "background: #e0e7ff; color: #3730a3; border: 1.5px solid #c7d2fe; border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; font-weight: 700; white-space: nowrap;";
             unitsDisplay.appendChild(badge);
         });
         warningBox.style.display = "block";
     } else {
-        unitsDisplay.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No UOM column mapped — fallback: Nos</span>';
+        unitsDisplay.innerHTML = '<span style="font-size: 0.82rem; color: #64748b; font-style: italic;">No UOM column mapped — fallback: Nos</span>';
         warningBox.style.display = "none";
     }
 
@@ -320,11 +320,15 @@ function openCreateItemsModal() {
         const li = document.createElement("li");
         li.style.display = "flex";
         li.style.justifyContent = "space-between";
-        li.style.background = "rgba(255, 255, 255, 0.05)";
-        li.style.padding = "6px 10px";
-        li.style.borderRadius = "4px";
-        li.style.fontSize = "0.85rem";
-        li.style.color = "var(--text-main)";
+        li.style.alignItems = "center";
+        li.style.background = "#ffffff";
+        li.style.border = "1px solid #e2e8f0";
+        li.style.padding = "8px 12px";
+        li.style.borderRadius = "5px";
+        li.style.fontSize = "0.88rem";
+        li.style.fontWeight = "600";
+        li.style.color = "#0f172a";
+        li.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.04)";
         li.innerText = prod;
         listDiv.appendChild(li);
     });

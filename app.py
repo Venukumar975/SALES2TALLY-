@@ -137,7 +137,7 @@ def main():
     _log_app("app.main() invoked. Performing initial temp cleanup...")
     cleanup_temp_files()
     port_no = find_available_port(5005)
-    url = f"http://127.0.0.1:{port_no}"
+    url = f"http://127.0.0.1:{port_no}/login"
     _log_app(f"Selected port {port_no} -> URL: {url}")
 
     # Start Flask server in background daemon thread

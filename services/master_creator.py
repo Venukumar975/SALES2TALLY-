@@ -8,7 +8,7 @@ import pandas as pd
 
 from config import get_tally_cache_folder, TALLY_URL
 from utils.helpers import find_headers_and_df, to_float
-from utils.matching import normalize_party_name
+from utils.matching import normalize_party_name, clean_and_resolve_state
 from services.tally_ledger_service import clean_tally_xml, get_cached_ledgers
 from services.tally_stock_service import get_cached_stock
 
@@ -21,6 +21,7 @@ def escape_xml_value(value):
 def create_missing_ledgers_in_tally(ledger_company, parties):
     """
     Construct XML and POST to Tally Prime to create Sundry Debtors customer ledgers.
+    Includes Mailing details, State, Country, PAN, and GST registration details compatible with Tally Prime.
     Updates local JSON cache upon completion.
     """
     if not ledger_company:
@@ -31,12 +32,14 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
     masters_body = ""
     for p in parties:
         p_name = normalize_party_name(p.get("name", ""))
-        p_state = p.get("state", "").strip()
+        p_raw_state = p.get("state", "").strip()
         p_gstin = p.get("gstin", "").strip() if p.get("gstin") else ""
         
         if not p_name:
             continue
             
+        p_state = clean_and_resolve_state(p_raw_state, p_gstin)
+        
         p_name_xml = escape_xml_value(p_name)
         p_state_xml = escape_xml_value(p_state)
         p_gstin_xml = escape_xml_value(p_gstin)
@@ -46,6 +49,27 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
         gstin_node = f"<PARTYGSTIN>{p_gstin_xml}</PARTYGSTIN>" if p_gstin else ""
         state_node = f"<LEDSTATENAME>{p_state_xml}</LEDSTATENAME>" if p_state else ""
         
+        # Build nested sub-lists required by Tally Prime 3.0+ / 4.0+ / 5.0+
+        state_mail_tag = f"<STATE>{p_state_xml}</STATE>" if p_state else ""
+        mailing_list = f"""
+          <LEDMAILINGDETAILS.LIST>
+            <APPLICABLEFROM>20240401</APPLICABLEFROM>
+            <PINCODE></PINCODE>
+            <MAILINGNAME>{p_name_xml}</MAILINGNAME>
+            {state_mail_tag}
+            <COUNTRY>India</COUNTRY>
+          </LEDMAILINGDETAILS.LIST>"""
+          
+        place_of_supply_tag = f"<PLACEOFSUPPLY>{p_state_xml}</PLACEOFSUPPLY>" if p_state else ""
+        gstin_sub_tag = f"<GSTIN>{p_gstin_xml}</GSTIN>" if p_gstin else ""
+        gst_reg_list = f"""
+          <LEDGSTREGDETAILS.LIST>
+            <APPLICABLEFROM>20240401</APPLICABLEFROM>
+            <GSTREGISTRATIONTYPE>{gst_reg_type}</GSTREGISTRATIONTYPE>
+            {place_of_supply_tag}
+            {gstin_sub_tag}
+          </LEDGSTREGDETAILS.LIST>"""
+
         masters_body += f"""
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
           <LEDGER NAME="{p_name_xml}" ACTION="Create">
@@ -54,9 +78,12 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
             <ISBILLWISEON>Yes</ISBILLWISEON>
             <AFFECTSSTOCK>No</AFFECTSSTOCK>
             <COUNTRYNAME>India</COUNTRYNAME>
+            <COUNTRYOFRESIDENCE>India</COUNTRYOFRESIDENCE>
             {state_node}
             <GSTREGISTRATIONTYPE>{gst_reg_type}</GSTREGISTRATIONTYPE>
             {gstin_node}
+            {mailing_list}
+            {gst_reg_list}
           </LEDGER>
         </TALLYMESSAGE>"""
         
@@ -170,8 +197,10 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
         if not hsn_code or hsn_code.lower() in ("nan", "none", "null"):
             hsn_code = ""
 
+        hsn_desc = f"{prod_name} - {hsn_code}" if hsn_code else prod_name
         prod_name_xml = escape_xml_value(prod_name)
         hsn_code_xml = escape_xml_value(hsn_code)
+        hsn_desc_xml = escape_xml_value(hsn_desc)
             
         is_applicable = (cgst_amt > 0) or (sgst_amt > 0) or (igst_amt > 0)
         gst_app_status = "Applicable"
@@ -208,13 +237,14 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
       <STOCKITEM NAME="{prod_name_xml}" ACTION="Create">
         <NAME>{prod_name_xml}</NAME>
         {parent_tag}
+        <DESCRIPTION>{hsn_desc_xml}</DESCRIPTION>
         <BASEUNITS>{escape_xml_value(item_units)}</BASEUNITS>
         <GSTAPPLICABLE>{gst_app_status}</GSTAPPLICABLE>
         <GSTTYPEOFSUPPLY>{supply_type_xml}</GSTTYPEOFSUPPLY>
         <HSNDETAILS.LIST>
           <APPLICABLEFROM>20240401</APPLICABLEFROM>
           <HSNCODE>{hsn_code_xml}</HSNCODE>
-          <HSN>{hsn_code_xml}</HSN>
+          <HSN>{hsn_desc_xml}</HSN>
           <SRCOFHSNDETAILS>Specify Details Here</SRCOFHSNDETAILS>
         </HSNDETAILS.LIST>{gst_details}
       </STOCKITEM>
