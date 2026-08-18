@@ -38,7 +38,7 @@ async function generateSalesXML() {
     btn.disabled = true;
     document.getElementById("success-container").style.display = "none";
     document.getElementById("excel-success-container").style.display = "none";
-    showStatus("mapping-status", "generate-xml-loader", "Generating Sales Register XML Vouchers...", "info");
+    showStatus("export-status", "generate-xml-loader", "Generating Sales Register XML Vouchers...", "info");
 
     const fromDate = document.getElementById("filter-from-date").value;
     const toDate = document.getElementById("filter-to-date").value;
@@ -80,7 +80,7 @@ async function generateSalesXML() {
                 triggerFileDownload(data.filename);
             };
             
-            hideStatus("mapping-status");
+            hideStatus("export-status");
             document.getElementById("success-container").style.display = "flex";
         } else {
             showStatus("mapping-status", null, `❌ Generation failed: ${data.error}`, "error");
@@ -113,7 +113,7 @@ async function generateProcessedExcel() {
 
     const btn = document.getElementById("btn-generate-excel");
     btn.disabled = true;
-    showStatus("mapping-status", "generate-excel-loader", "Generating Processed Excel...", "info");
+    showStatus("export-status", "generate-excel-loader", "Generating Processed Excel...", "info");
 
     const fromDate = document.getElementById("filter-from-date").value;
     const toDate = document.getElementById("filter-to-date").value;
@@ -142,7 +142,7 @@ async function generateProcessedExcel() {
                 triggerFileDownload(data.filename);
             };
             
-            hideStatus("mapping-status");
+            hideStatus("export-status");
             document.getElementById("excel-success-container").style.display = "flex";
         } else {
             showStatus("mapping-status", null, `❌ Excel generation failed: ${data.error}`, "error");

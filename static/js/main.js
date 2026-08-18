@@ -70,14 +70,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnOpenLedgers = document.getElementById("btn-open-sync-ledgers-modal");
     if (btnOpenLedgers) {
         btnOpenLedgers.addEventListener("click", () => {
-            ledgersModal.style.display = "block";
+            ledgersModal.style.display = "flex";
         });
     }
 
     const btnOpenStock = document.getElementById("btn-open-sync-stock-modal");
     if (btnOpenStock) {
         btnOpenStock.addEventListener("click", () => {
-            stockModal.style.display = "block";
+            stockModal.style.display = "flex";
         });
     }
     

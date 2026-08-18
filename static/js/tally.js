@@ -84,10 +84,12 @@ async function syncTally(type) {
                 loadLedgersForVoucherConfig(data.company_name);
             }
         } else {
-            showStatus("tally-sync-status", null, `❌ Sync failed: ${data.error}`, "error");
+            document.getElementById(modalId).style.display = "none";
+            showStatus("tally-sync-status", null, `❌ Sync Failed: ${data.error}`, "error");
         }
     } catch (err) {
-        showStatus("tally-sync-status", null, `❌ Network error: ${err.message}`, "error");
+        document.getElementById(modalId).style.display = "none";
+        showStatus("tally-sync-status", null, `❌ Network Error: ${err.message}`, "error");
     } finally {
         startSyncBtn.disabled = false;
     }

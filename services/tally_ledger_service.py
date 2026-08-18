@@ -111,6 +111,41 @@ def fetch_live_party_details(company_name):
     except Exception:
         return {}
 
+def get_tally_open_companies():
+    """Query Tally Prime port 9000 to get list of currently loaded companies in Gateway of Tally."""
+    envelope = """<ENVELOPE>
+        <HEADER>
+            <VERSION>1</VERSION>
+            <TALLYREQUEST>Export Data</TALLYREQUEST>
+            <TYPE>Collection</TYPE>
+            <ID>List of Companies</ID>
+        </HEADER>
+        <BODY>
+            <DESC>
+                <STATICVARIABLES>
+                    <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                </STATICVARIABLES>
+            </DESC>
+        </BODY>
+    </ENVELOPE>"""
+    try:
+        r = requests.post(TALLY_URL, data=envelope, timeout=1200)
+        if r.status_code != 200:
+            return []
+        root = ET.fromstring(clean_tally_xml(r.content))
+        companies = []
+        for c in root.findall(".//COMPANY"):
+            name = c.get("NAME") or c.findtext("NAME")
+            if name and name.strip() not in companies:
+                companies.append(name.strip())
+        if not companies:
+            for name_el in root.findall(".//NAME"):
+                if name_el.text and name_el.text.strip() not in companies:
+                    companies.append(name_el.text.strip())
+        return companies
+    except Exception:
+        return []
+
 def sync_ledgers_from_tally(company_name):
     """
     Connect to Tally Prime on port 9000 and export all accounting Ledgers.
@@ -120,6 +155,15 @@ def sync_ledgers_from_tally(company_name):
     if not company_name:
         raise ValueError("Company Name is required")
         
+    # Verify whether company is open in Tally Prime's Gateway
+    open_companies = get_tally_open_companies()
+    if open_companies:
+        matched_co = next((c for c in open_companies if c.lower() == company_name.lower()), None)
+        if not matched_co:
+            open_list_str = ", ".join(f"'{c}'" for c in open_companies)
+            raise RuntimeError(f"Company '{company_name}' is not currently loaded in Gateway of Tally. Open companies in Tally: {open_list_str}")
+        company_name = matched_co
+
     envelope = f"""<ENVELOPE>
         <HEADER>
             <VERSION>1</VERSION>
@@ -156,7 +200,7 @@ def sync_ledgers_from_tally(company_name):
                 
     ledgers = sorted(list(set(ledgers)))
     
-    # Save cache
+    # Save cache for valid open company
     safe_co = re.sub(r'[\\/*?:"<>|]', "", company_name).strip()
     company_dir = os.path.join(get_tally_cache_folder(), safe_co)
     os.makedirs(company_dir, exist_ok=True)

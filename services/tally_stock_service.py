@@ -17,6 +17,15 @@ def sync_stock_from_tally(company_name):
     if not company_name:
         raise ValueError("Company Name is required")
         
+    from services.tally_ledger_service import get_tally_open_companies
+    open_companies = get_tally_open_companies()
+    if open_companies:
+        matched_co = next((c for c in open_companies if c.lower() == company_name.lower()), None)
+        if not matched_co:
+            open_list_str = ", ".join(f"'{c}'" for c in open_companies)
+            raise RuntimeError(f"Company '{company_name}' is not currently loaded in Gateway of Tally. Open companies in Tally: {open_list_str}")
+        company_name = matched_co
+
     envelope = f"""<ENVELOPE>
         <HEADER>
             <VERSION>1</VERSION>
@@ -53,7 +62,7 @@ def sync_stock_from_tally(company_name):
                 
     items = sorted(list(set(items)))
     
-    # Save cache
+    # Save cache for valid open company
     safe_co = re.sub(r'[\\/*?:"<>|]', "", company_name).strip()
     company_dir = os.path.join(get_tally_cache_folder(), safe_co)
     os.makedirs(company_dir, exist_ok=True)

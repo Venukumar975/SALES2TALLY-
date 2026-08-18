@@ -3,298 +3,414 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SALES2TALLY</title>
+    <title>SALES2TALLY - Enterprise Desktop Suite</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='app_icon.png') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=16.0">
 </head>
 <body>
     <div class="container">
-        <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
-            <div>
-                <div class="logo-container">
-                    <img src="{{ url_for('static', filename='app_icon.png') }}" style="width: 36px; height: 36px; border-radius: 8px;" alt="Logo">
-                    <h1>SALES2TALLY</h1>
+        <!-- APP TOP HEADER (Logo + Title + License Time Pill) -->
+        <header class="app-header">
+            <div class="brand-group">
+                <div class="brand-logo-pod">
+                    <img src="{{ url_for('static', filename='app_icon.png') }}" class="brand-logo-img" alt="Logo">
                 </div>
-                <p>Map and Import Excel sales registers into Tally Prime automatically</p>
+                <div class="brand-text-block">
+                    <h1 class="brand-title">SALES2TALLY <span class="brand-badge-pro">ENTERPRISE</span></h1>
+                    <p class="brand-subtitle">Automated Excel Sales Register to Tally Prime XML Pipeline</p>
+                </div>
             </div>
-            <div id="header-license-pill" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                <span>●</span> <span id="header-license-text">Checking License...</span>
+            <div id="header-license-pill" class="license-status-pill">
+                <span class="live-pulse-dot"></span>
+                <span id="header-license-text">Checking License...</span>
             </div>
+        </header>
+
+        <!-- STICKY FROSTED GLASS SHIELD (FLUSH AT TOP 0, BLURS ALL SCROLLING CONTENT) -->
+        <div class="sticky-glass-shield">
+            <nav class="workflow-stepper" id="main-stepper-bar" aria-label="Workflow Steps">
+                <div class="step-indicator active" id="step-node-1" onclick="scrollToStep('card-excel')" title="Go to Step 1: Excel Source">
+                    <div class="step-badge">1</div>
+                    <div class="step-info">
+                        <span class="step-tag">Step 1</span>
+                        <span class="step-name">Excel Source</span>
+                    </div>
+                </div>
+                <div class="step-connector" id="step-line-1"></div>
+                <div class="step-indicator" id="step-node-2" onclick="scrollToStep('card-mapping')" title="Go to Step 2: Map Headers">
+                    <div class="step-badge">2</div>
+                    <div class="step-info">
+                        <span class="step-tag">Step 2</span>
+                        <span class="step-name">Map Headers</span>
+                    </div>
+                </div>
+                <div class="step-connector" id="step-line-2"></div>
+                <div class="step-indicator" id="step-node-3" onclick="scrollToStep('card-tally')" title="Go to Step 3: Tally Sync">
+                    <div class="step-badge">3</div>
+                    <div class="step-info">
+                        <span class="step-tag">Step 3</span>
+                        <span class="step-name">Tally Sync</span>
+                    </div>
+                </div>
+                <div class="step-connector" id="step-line-3"></div>
+                <div class="step-indicator" id="step-node-4" onclick="scrollToStep('card-generate')" title="Go to Step 4: Verification Hub">
+                    <div class="step-badge">4</div>
+                    <div class="step-info">
+                        <span class="step-tag">Step 4</span>
+                        <span class="step-name">Verification Hub</span>
+                    </div>
+                </div>
+                <div class="step-connector" id="step-line-4"></div>
+                <div class="step-indicator" id="step-node-5" onclick="scrollToStep('card-export')" title="Go to Step 5: Tax & Export">
+                    <div class="step-badge">5</div>
+                    <div class="step-info">
+                        <span class="step-tag">Step 5</span>
+                        <span class="step-name">Tax &amp; Export</span>
+                    </div>
+                </div>
+            </nav>
         </div>
 
         <!-- CARD 1: EXCEL INPUT -->
-        <div class="card" id="card-excel" style="margin-bottom: 25px;">
-            <div class="step-header">
-                <div class="step-number">1</div>
-                <div class="step-title">Source Excel File & Worksheet</div>
+        <section class="workflow-card" id="card-excel">
+            <div class="card-head">
+                <div class="card-icon-badge">1</div>
+                <div class="card-head-text">
+                    <h2>Source Excel Workbook</h2>
+                    <p>Select your sales register file (.xlsx, .xls) and choose the active worksheet</p>
+                </div>
             </div>
             
-            <div class="dropzone" id="dropzone" onclick="document.getElementById('excel_file').click()">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                </svg>
-                <div>
-                    <p style="font-weight: 600; font-size: 1.05rem; margin-bottom: 4px;">Drag and drop your Excel file here</p>
-                    <p>or <span class="highlight">browse files</span> from your computer</p>
+            <div class="card-body">
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('excel_file').click()">
+                    <div class="dropzone-icon-wrap">
+                        <svg class="dropzone-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                    </div>
+                    <div class="dropzone-text-group">
+                        <p class="dropzone-main-text">Drag &amp; drop your Excel register file here</p>
+                        <p class="dropzone-sub-text">or <span class="dropzone-browse-link">browse files</span> from your computer</p>
+                    </div>
+                    <span class="dropzone-format-tag">Supports Microsoft Excel (.xlsx, .xls)</span>
+                    <input type="file" id="excel_file" class="file-input" accept=".xlsx, .xls">
                 </div>
-                <p style="font-size: 0.8rem;">Supports .xlsx and .xls formats</p>
-                <input type="file" id="excel_file" class="file-input" accept=".xlsx, .xls">
-            </div>
 
-            <div id="file-info-container" class="file-info">
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="color: var(--accent-primary);">
-                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
-                </svg>
-                <span id="uploaded-filename">Workbook.xlsx</span>
-                <span class="remove-file" onclick="resetFile()">&times;</span>
-            </div>
+                <div id="file-info-container" class="file-info">
+                    <div class="file-info-left">
+                        <svg class="file-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span id="uploaded-filename" class="file-name-text">Workbook.xlsx</span>
+                    </div>
+                    <button type="button" class="remove-file-btn" onclick="resetFile()" title="Remove file">&times;</button>
+                </div>
 
-            <div id="upload-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
+                <div id="upload-status" class="status-box status-info" style="display: none;"></div>
 
-            <!-- SHEET SELECT AND HEADER ROW CONFIG -->
-            <div id="sheet-select-container" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 12px; font-weight: 500;">Select the worksheet containing register records:</p>
-                
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div style="flex: 2; min-width: 200px;">
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Worksheet Name:</label>
-                        <div class="select-wrapper">
-                            <select id="sheet_select">
-                                <option value="">-- Choose a sheet --</option>
-                            </select>
+                <!-- SHEET SELECT AND HEADER ROW CONFIG -->
+                <div id="sheet-select-container" class="sheet-config-pod" style="display: none;">
+                    <div class="pod-header">
+                        <span class="pod-tag">Worksheet Configuration</span>
+                    </div>
+                    <div class="sheet-input-row">
+                        <div class="input-field-group flex-2">
+                            <label for="sheet_select">Target Worksheet Name</label>
+                            <div class="select-wrapper">
+                                <select id="sheet_select">
+                                    <option value="">-- Choose a sheet --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-field-group width-160">
+                            <label for="header_row">Header Row Index</label>
+                            <input type="number" id="header_row" value="1" min="1" placeholder="1">
                         </div>
                     </div>
-                    <div style="width: 130px;">
-                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Header Row index:</label>
-                        <input type="number" id="header_row" value="1" min="1" placeholder="e.g. 1">
+                    <div id="sheet-status" class="status-box status-info" style="display: none;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CARD 2: COLUMN MAPPING GRID (SCROLLABLE INSIDE) -->
+        <section class="workflow-card" id="card-mapping" style="display: none;">
+            <div class="card-head">
+                <div class="card-icon-badge">2</div>
+                <div class="card-head-text">
+                    <h2>Map Column Headers</h2>
+                    <p>Align source Excel columns to standardized Tally register fields</p>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="mapping-instruction-banner">
+                    <p>Fields marked with  <span class="badge badge-required">REQUIRED</span>  must be mapped to proceed.</p>
+                </div>
+
+                <!-- SCROLLABLE MAPPING CONTAINER -->
+                <div class="mapping-scroll-box">
+                    <div class="mapping-grid" id="mapping-grid-container">
+                        <!-- Dynamic columns injected here by JS -->
                     </div>
                 </div>
 
-                <div id="sheet-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
-            </div>
-        </div>
-
-        <!-- CARD 2: COLUMN MAPPING GRID -->
-        <div class="card" id="card-mapping" style="margin-bottom: 25px; display: none;">
-            <div class="step-header">
-                <div class="step-number">2</div>
-                <div class="step-title">Map Column Headers</div>
-                <button class="btn btn-secondary" style="margin-left: auto; padding: 8px 16px; font-size: 0.85rem;" onclick="triggerAutoMatch()">
-                    ⚡ Auto-Match Headers
-                </button>
-            </div>
-
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
-                Map your source Excel columns to the standardized output fields. Items marked with <span class="badge" style="margin-left: 0;">Required</span> must be mapped to proceed.
-            </p>
-
-            <div class="mapping-grid" id="mapping-grid-container">
-                <!-- Dynamic columns injected here by JS -->
-            </div>
-
-            <!-- Date Filter Slicer -->
-            <div id="date-slicer-container" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); display: none;">
-                <div style="font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.2rem;">📅</span>
-                    <span>Date Filter Slicer (Optional)</span>
-                </div>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-                    Only process entries within this date range (both dates inclusive). Initially filled with Excel min and max dates.
-                </p>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px;">
-                        <label for="filter-from-date" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">From Date</label>
-                        <input type="date" id="filter-from-date" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-size: 0.95rem; width: 100%; box-sizing: border-box;">
+                <!-- Date Filter Slicer -->
+                <div id="date-slicer-container" class="date-slicer-pod" style="display: none;">
+                    <div class="slicer-header">
+                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--brand-primary);">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <div>
+                            <h3>Date Filter Slicer (Optional)</h3>
+                            <p>Filter voucher records within a custom date range (both dates inclusive)</p>
+                        </div>
                     </div>
-                    <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px;">
-                        <label for="filter-to-date" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">To Date</label>
-                        <input type="date" id="filter-to-date" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-size: 0.95rem; width: 100%; box-sizing: border-box;">
+                    <div class="slicer-inputs">
+                        <div class="input-field-group">
+                            <label for="filter-from-date">From Date</label>
+                            <input type="date" id="filter-from-date">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="filter-to-date">To Date</label>
+                            <input type="date" id="filter-to-date">
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- CARD 3: TALLY PRIME INTEGRATION -->
-        <div class="card" id="card-tally" style="margin-bottom: 25px; display: none;">
-            <div class="step-header">
-                <div class="step-number">3</div>
-                <div class="step-title">Tally Prime Sync & Import (Required)</div>
+        <section class="workflow-card" id="card-tally" style="display: none;">
+            <div class="card-head">
+                <div class="card-icon-badge">3</div>
+                <div class="card-head-text">
+                    <h2>Tally Prime Integration</h2>
+                    <p>Select cached master databases or sync live from Tally Prime (Port 9000)</p>
+                </div>
             </div>
             
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">
-                Select synced Tally companies or sync fresh database records from your local Tally Prime instance (running on port 9000).
-            </p>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 15px;">
-                <!-- LEDGER IMPORT -->
-                <div class="sync-box">
-                    <h3 class="sync-title">📂 Ledger Names (Account Books)</h3>
-                    <p class="sync-desc">Retrieve synced ledger names from Tally to verify customer matches.</p>
-                    <div class="company-profile-bar">
-                        <span class="profile-label">Company Profile:</span>
-                        <div class="select-wrapper dark-select">
-                            <select id="tally_ledger_company_select">
-                                <option value="">-- Select Synced Company --</option>
-                            </select>
+            <div class="card-body">
+                <div class="sync-pods-grid">
+                    <!-- LEDGER IMPORT -->
+                    <div class="sync-pod">
+                        <div class="sync-pod-head">
+                            <div class="pod-icon-box">
+                                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3>Party Ledgers (Account Books)</h3>
+                                <p>Verify customer &amp; supplier accounts against Tally Prime</p>
+                            </div>
                         </div>
-                        <button type="button" class="btn-sync-tally" id="btn-open-sync-ledgers-modal">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 2px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
-                            </svg>
-                            Sync Tally
-                        </button>
+                        <div class="company-profile-bar">
+                            <div class="select-wrapper">
+                                <select id="tally_ledger_company_select">
+                                    <option value="">-- Select Synced Company --</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-sync-action" id="btn-open-sync-ledgers-modal">
+                                <svg class="sync-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+                                </svg>
+                                <span>Sync Tally</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STOCK ITEM IMPORT -->
+                    <div class="sync-pod">
+                        <div class="sync-pod-head">
+                            <div class="pod-icon-box">
+                                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3>Item Stock (Inventory)</h3>
+                                <p>Verify product inventory and units against Tally Prime</p>
+                            </div>
+                        </div>
+                        <div class="company-profile-bar">
+                            <div class="select-wrapper">
+                                <select id="tally_stock_company_select">
+                                    <option value="">-- Select Synced Company --</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-sync-action" id="btn-open-sync-stock-modal">
+                                <svg class="sync-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
+                                </svg>
+                                <span>Sync Tally</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- STOCK ITEM IMPORT -->
-                <div class="sync-box">
-                    <h3 class="sync-title">📦 Item Stock (Inventory)</h3>
-                    <p class="sync-desc">Retrieve stock item names from Tally to verify product matches.</p>
-                    <div class="company-profile-bar">
-                        <span class="profile-label">Company Profile:</span>
-                        <div class="select-wrapper dark-select">
-                            <select id="tally_stock_company_select">
-                                <option value="">-- Select Synced Company --</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn-sync-tally" id="btn-open-sync-stock-modal">
-                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="margin-right: 2px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
-                            </svg>
-                            Sync Tally
-                        </button>
-                    </div>
+                <div id="tally-sync-status" class="status-box status-info" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- CARD 4: VERIFICATION HUB ONLY -->
+        <section class="workflow-card" id="card-generate" style="display: none;">
+            <div class="card-head">
+                <div class="card-icon-badge">4</div>
+                <div class="card-head-text">
+                    <h2>Master Verification Hub</h2>
+                    <p>Audit and reconcile party accounts, product inventory, and measurement units</p>
                 </div>
             </div>
 
-            <div id="tally-sync-status" class="status-box status-info" style="margin-top: 15px; display: none;"></div>
-        </div>
-
-        <!-- CARD 4: PARTY VERIFICATION AND LEDGER CREATION -->
-        <div class="card" id="card-generate" style="margin-bottom: 25px; display: none;">
-            <div class="step-header">
-                <div class="step-number">4</div>
-                <div class="step-title">Party Ledger Verification & Sales XML</div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div style="display: flex; gap: 15px; width: 100%;">
-                    <button class="btn" id="btn-check-parties" onclick="checkPartyNames()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; display: flex; justify-content: center; align-items: center;">
+            <div class="card-body">
+                <!-- 3 MAIN VERIFICATION TABS / ACTIONS -->
+                <div class="check-actions-bar">
+                    <button type="button" class="btn btn-check btn-parties" id="btn-check-parties" onclick="checkPartyNames()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
                         <span>Check Party Names</span>
-                        <div class="loader" id="check-parties-loader" style="margin-left: 8px;"></div>
+                        <div class="loader" id="check-parties-loader"></div>
                     </button>
-                    <button class="btn" id="btn-check-products" onclick="checkProductNames()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-primary), #2563eb); display: flex; justify-content: center; align-items: center;">
+                    <button type="button" class="btn btn-check btn-products" id="btn-check-products" onclick="checkProductNames()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
                         <span>Check Product Names</span>
-                        <div class="loader" id="check-products-loader" style="margin-left: 8px;"></div>
+                        <div class="loader" id="check-products-loader"></div>
                     </button>
-                    <button class="btn" id="btn-check-units" onclick="checkUnits()" style="flex: 1; padding: 14px; font-size: 1.05rem; font-weight: 700; background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: flex; justify-content: center; align-items: center;">
+                    <button type="button" class="btn btn-check btn-units" id="btn-check-units" onclick="checkUnits()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
                         <span>Check Units</span>
-                        <div class="loader" id="check-units-loader" style="margin-left: 8px;"></div>
+                        <div class="loader" id="check-units-loader"></div>
                     </button>
                 </div>
 
                 <div id="mapping-status" class="status-box status-error" style="display: none;"></div>
 
-                <!-- UNITS CHECK RESULTS REGION -->
-                <div id="units-check-results-container" style="display: none; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(139, 92, 246, 0.05); border-radius: 10px; padding: 16px; margin-top: 10px; flex-direction: column; gap: 12px;">
-                    <div style="font-weight: 700; color: #a78bfa; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
-                        <span>📐 Detected Unit(s) of Measure in Excel</span>
-                    </div>
-                    <div id="units-badge-list" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"></div>
-                    <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 10px 14px; font-size: 0.82rem; color: #ca8a04; line-height: 1.5;">
-                        ⚠️ <strong>Important Requirement:</strong> Please make sure all detected Unit(s) above are already created as <strong>Units of Measure</strong> in your Tally Prime company. The app will not auto-create units — it will assign each stock item under its proper unit when importing.
-                    </div>
-                </div>
-
-                <!-- PARTY CHECK RESULTS REGION -->
-                <div id="party-check-results-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px; flex-direction: column; gap: 20px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Verification Report</h3>
-                    
-                    <!-- PERFECT MATCHES -->
-                    <div id="report-perfect" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 12px 16px;">
-                        <div style="font-weight: 600; color: var(--accent-success); font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                            <span style="background: var(--accent-success); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">✓</span>
-                            <span>Perfect Matches in Tally: <strong id="count-perfect">0</strong></span>
-                        </div>
-                        <div class="scrollable-report-box">
-                            <p id="list-perfect" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; word-break: break-word;"></p>
-                        </div>
+                <!-- PARTY VERIFICATION CONTAINER (2 SCROLLABLE PODS) -->
+                <div id="party-check-results-container" class="verification-view-panel" style="display: none;">
+                    <div class="panel-header-row">
+                        <h3 class="panel-title">Party Ledger Audit Results</h3>
+                        <button type="button" class="btn btn-warning" id="btn-create-tally-ledgers" style="display: none;">
+                            <span>Create Missing Ledgers in Tally</span>
+                            <div class="loader" id="create-ledgers-loader"></div>
+                        </button>
                     </div>
 
-                    <!-- SIMILAR MATCHES -->
-                    <div id="report-similar" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px; padding: 12px 16px;">
-                        <div style="font-weight: 600; color: var(--accent-primary); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                            <span style="background: var(--accent-primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">⚡</span>
-                            <span>Similar Matches (Fuzzy Auto-Link): <strong id="count-similar">0</strong></span>
+                    <!-- 1. MATCHED PARTIES SCROLLABLE POD -->
+                    <div class="audit-group">
+                        <div class="audit-group-header success">
+                            <span class="status-icon-circle success">✓</span>
+                            <span>Matched Ledgers in Tally (<strong id="count-perfect">0</strong> Exact + <strong id="count-similar">0</strong> Fuzzy)</span>
                         </div>
-                        <div id="list-similar" class="scrollable-report-box" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem;"></div>
+                        <div class="audit-scrollable-container" id="matched-parties-scroll-container">
+                            <div class="audit-sub-section" id="section-exact-parties">
+                                <div class="audit-sub-header">Exact 100% Matches</div>
+                                <div id="list-perfect" class="isolated-cards-flow"></div>
+                            </div>
+                            <div class="audit-sub-section" id="section-fuzzy-parties" style="margin-top: 14px; display: none;">
+                                <div class="audit-sub-header fuzzy">Auto-Linked by Similarity (&lt; 100%)</div>
+                                <div id="list-similar" class="isolated-cards-flow"></div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- NON-EXISTING PARTIES -->
-                    <div id="report-missing" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 12px 16px;">
-                        <div style="font-weight: 600; color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                            <span style="background: var(--accent-warning); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">?</span>
-                            <span>Non-Existing Ledgers (Will be Created): <strong id="count-missing">0</strong></span>
+                    <!-- 2. MISSING PARTIES SCROLLABLE POD -->
+                    <div class="audit-group" id="report-missing">
+                        <div class="audit-group-header warning">
+                            <span class="status-icon-circle warning">!</span>
+                            <span>Non-Existing Ledgers in Tally (<strong id="count-missing">0</strong> Missing)</span>
                         </div>
-                        <div id="table-missing-wrapper" class="scrollable-report-box" style="overflow-x: auto;">
-                            <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
-                                <thead>
-                                    <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
-                                        <th style="padding: 6px 8px; font-weight: 600;">Party Name</th>
-                                        <th style="padding: 6px 8px; font-weight: 600;">State Name</th>
-                                        <th style="padding: 6px 8px; font-weight: 600;">GSTIN</th>
-                                        <th style="padding: 6px 8px; font-weight: 600;">Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tbody-missing"></tbody>
-                            </table>
+                        <div class="audit-scrollable-container" id="missing-parties-scroll-container">
+                            <div id="missing-parties-cards-list" class="isolated-cards-flow"></div>
+                            <table style="display: none;"><tbody id="tbody-missing"></tbody></table>
                         </div>
                     </div>
                 </div>
 
-                <!-- PRODUCT CHECK RESULTS REGION -->
-                <div id="product-check-results-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px; flex-direction: column; gap: 20px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Product Verification Report</h3>
-                    
-                    <div id="report-products-perfect" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px; padding: 12px 16px;">
-                        <div style="font-weight: 600; color: var(--accent-success); font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                            <span style="background: var(--accent-success); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">✓</span>
-                            <span>Perfect Matches in Item Stock: <strong id="count-products-perfect">0</strong></span>
+                <!-- PRODUCT VERIFICATION CONTAINER (2 SCROLLABLE PODS) -->
+                <div id="product-check-results-container" class="verification-view-panel" style="display: none;">
+                    <div class="panel-header-row">
+                        <h3 class="panel-title">Stock Product Audit Results</h3>
+                        <button type="button" class="btn btn-info" id="btn-create-tally-items" style="display: none;">
+                            <span>Create Stock Items in Tally</span>
+                            <div class="loader" id="create-items-btn-loader"></div>
+                        </button>
+                    </div>
+
+                    <!-- 1. MATCHED PRODUCTS SCROLLABLE POD -->
+                    <div class="audit-group" id="report-products-perfect">
+                        <div class="audit-group-header success">
+                            <span class="status-icon-circle success">✓</span>
+                            <span>Matched Stock Items (<strong id="count-products-perfect">0</strong> Matched)</span>
                         </div>
-                        <div class="scrollable-report-box">
-                            <p id="list-products-perfect" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; word-break: break-word;"></p>
+                        <div class="audit-scrollable-container">
+                            <div id="list-products-perfect" class="isolated-cards-flow"></div>
                         </div>
                     </div>
 
-                    <div id="report-products-missing" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; padding: 12px 16px;">
-                        <div style="font-weight: 600; color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                            <span style="background: var(--accent-warning); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75rem;">?</span>
-                            <span>Missing Products (Not in Tally Stock): <strong id="count-products-missing">0</strong></span>
+                    <!-- 2. MISSING PRODUCTS SCROLLABLE POD -->
+                    <div class="audit-group" id="report-products-missing">
+                        <div class="audit-group-header warning">
+                            <span class="status-icon-circle warning">!</span>
+                            <span>Missing Stock Items (<strong id="count-products-missing">0</strong> Missing)</span>
                         </div>
-                        <div class="scrollable-report-box">
-                            <p id="list-products-missing" style="font-size: 0.8rem; color: var(--accent-warning); line-height: 1.5; word-break: break-word;"></p>
+                        <div class="audit-scrollable-container">
+                            <div id="list-products-missing" class="isolated-cards-flow"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- LEDGER CONFIGURATION FOR VOUCHERS -->
-                <div id="ledger-config-container" style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Voucher Ledger Accounts</h3>
-
-                    <div>
-                        <label for="xml_company_name" style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Tally Company Name for XML Import:</label>
-                        <input type="text" id="xml_company_name" placeholder="Enter the exact Tally company name" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
-                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">This exact name is written into the XML import target. It is pre-filled from the synced company.</p>
+                <!-- UNITS VERIFICATION CONTAINER (GLOWING YELLOW MESSAGE) -->
+                <div id="units-check-results-container" class="verification-view-panel" style="display: none;">
+                    <div class="panel-header-row">
+                        <h3 class="panel-title">Detected Unit(s) of Measure in Excel</h3>
                     </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
+                    <div id="units-badge-list" class="units-badge-container"></div>
+                    <div class="units-glowing-banner">
+                        <div class="glowing-banner-icon">⚠️</div>
                         <div>
-                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Sales Ledger Account:</label>
-                            <input type="text" id="sales_ledger_select" placeholder="Enter Sales Ledger (e.g. Goods Sales)" style="width: 100%; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background: transparent; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                            <strong>Important Requirement:</strong> Ensure all detected unit(s) above exist as <strong>Units of Measure</strong> in your Tally Prime company before import.
                         </div>
-                        <div>
-                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Misc / Round-off Ledger Account:</label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CARD 5: VOUCHER LEDGERS, TAX MAPPING & EXPORT -->
+        <section class="workflow-card" id="card-export" style="display: none;">
+            <div class="card-head">
+                <div class="card-icon-badge">5</div>
+                <div class="card-head-text">
+                    <h2>Tax Types &amp; Export Hub</h2>
+                    <p>Map GST tax rates to Tally output ledgers and generate transactions XML</p>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <!-- VOUCHER ACCOUNTS -->
+                <div id="ledger-config-container" class="ledger-config-section">
+                    <h3 class="section-subheading">Voucher Ledger Accounts</h3>
+
+                    <div class="input-field-group">
+                        <label for="xml_company_name">Tally Company Name for XML Import</label>
+                        <input type="text" id="xml_company_name" placeholder="Enter the exact Tally company name">
+                        <span class="input-helper-text">Pre-filled from the synced company profile; written into the XML target header.</span>
+                    </div>
+                    
+                    <div class="form-row-2">
+                        <div class="input-field-group">
+                            <label for="sales_ledger_select">Sales Ledger Account</label>
+                            <input type="text" id="sales_ledger_select" placeholder="Enter Sales Ledger (e.g. Goods Sales)">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="misc_ledger_select">Misc / Round-off Ledger Account</label>
                             <div class="select-wrapper">
                                 <select id="misc_ledger_select">
                                     <option value="">-- Choose Misc Ledger --</option>
@@ -304,60 +420,65 @@
                     </div>
                 </div>
 
-                <!-- DETECTED TAX RATES CONFIGURATION -->
-                <div id="detected-tax-rates-container" style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 20px; display: none; flex-direction: column; gap: 15px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);">Detected Tax Types &amp; Rates Mapping</h3>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px;">
-                        Select the corresponding Tally ledger for each detected tax type and rate:
-                    </p>
-                    <div id="tax-rates-mapping-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;"></div>
+                <!-- DETECTED TAX RATES MATRIX -->
+                <div id="detected-tax-rates-container" class="tax-rates-section" style="display: none;">
+                    <h3 class="section-subheading">Detected Tax Types &amp; Rates Mapping</h3>
+                    <p class="section-description">Select the corresponding Tally ledger for each detected GST tax type and percentage:</p>
+                    <div id="tax-rates-mapping-list" class="tax-rates-grid"></div>
                 </div>
 
-                <!-- ACTION BUTTONS -->
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                    <button class="btn" id="btn-create-tally-ledgers" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-warning), #d97706); display: none;">
-                        <span>Create Party Names Ledgers in Tally</span>
-                        <div class="loader" id="create-ledgers-loader"></div>
-                    </button>
-                    
-                    <button class="btn" id="btn-create-tally-items" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: none;">
-                        <span>Create Stock Items in Tally</span>
-                        <div class="loader" id="create-items-btn-loader"></div>
-                    </button>
-                    
-                    <button class="btn" id="btn-generate-xml" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, var(--accent-success), #0d9488);">
+                <!-- COMPILE ACTIONS -->
+                <div id="export-status" class="status-box status-info" style="display: none; margin-top: 15px;"></div>
+                <div class="generate-actions-bar">
+                    <button type="button" class="btn btn-primary btn-compile-xml" id="btn-generate-xml">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
                         <span>Generate Sales Register XML</span>
                         <div class="loader" id="generate-xml-loader"></div>
                     </button>
-                </div>
-
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
-                    <button class="btn" id="btn-generate-excel" style="flex: 1; padding: 12px; font-size: 0.95rem; background: linear-gradient(135deg, #4f46e5, #4338ca);">
+                    
+                    <button type="button" class="btn btn-secondary btn-compile-excel" id="btn-generate-excel">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
                         <span>Generate Processed Excel</span>
                         <div class="loader" id="generate-excel-loader"></div>
                     </button>
                 </div>
 
-                <!-- SUCCESS REGION -->
-                <div id="success-container" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 20px; margin-top: 20px; text-align: center; flex-direction: column; align-items: center; gap: 15px;">
-                    <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--accent-success);">Vouchers XML Generated!</h3>
-                    <a id="download-link" href="#" class="btn" style="width: 100%; background: linear-gradient(135deg, var(--accent-success), #059669);">
+                <!-- XML SUCCESS REGION -->
+                <div id="success-container" class="success-download-box" style="display: none;">
+                    <div class="success-icon-badge">✓</div>
+                    <div class="success-text-group">
+                        <h3>Vouchers XML Generated Successfully!</h3>
+                        <p>Ready for instant import into Tally Prime via <strong>Import &rarr; Transactions</strong>.</p>
+                    </div>
+                    <a id="download-link" href="#" class="btn btn-download-primary">
                         Download Sales Register XML
                     </a>
                 </div>
 
                 <!-- EXCEL SUCCESS REGION -->
-                <div id="excel-success-container" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 20px; margin-top: 20px; text-align: center; flex-direction: column; align-items: center; gap: 15px;">
-                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #4f46e5;">Processed Excel Generated!</h3>
-                    <a id="excel-download-link" href="#" class="btn" style="width: 100%; background: linear-gradient(135deg, #4f46e5, #4338ca);">
+                <div id="excel-success-container" class="success-download-box excel-theme" style="display: none;">
+                    <div class="success-icon-badge excel">
+                        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="success-text-group">
+                        <h3>Processed Excel Generated Successfully!</h3>
+                        <p>Clean standardized registers with normalized tax breakdowns.</p>
+                    </div>
+                    <a id="excel-download-link" href="#" class="btn btn-download-excel">
                         Download Processed Excel
                     </a>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
 
-    <!-- MODAL POPUPS FOR TALLY SYNC -->
+    <!-- MODAL POPUPS (PERFECTLY CENTERED IN VIEWPORT) -->
     <!-- Modal for Sync Ledgers -->
     <div id="sync-ledgers-modal" class="modal">
       <div class="modal-content">
@@ -366,17 +487,17 @@
           <span class="modal-close-x" id="close-ledgers-modal-x">&times;</span>
         </div>
         <div class="modal-body">
-          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer with your client company open.</p>
-          <div class="form-group">
-            <label for="sync_ledger_company_name">Company Name:</label>
-            <input type="text" id="sync_ledger_company_name" placeholder="Enter the exact company name saved in Tally...">
+          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer (Port 9000) with your client company open.</p>
+          <div class="input-field-group">
+            <label for="sync_ledger_company_name">Company Name in Tally:</label>
+            <input type="text" id="sync_ledger_company_name" placeholder="Enter the exact company name in Tally...">
           </div>
         </div>
         <div class="modal-footer">
-          <button class="close-modal-btn" id="close-ledgers-modal-btn">Close</button>
-          <button class="start-sync-btn" id="btn-sync-ledgers-action">
+          <button type="button" class="close-modal-btn" id="close-ledgers-modal-btn">Close</button>
+          <button type="button" class="start-sync-btn" id="btn-sync-ledgers-action">
              <span>Start Sync</span>
-             <div class="loader" id="ledgers-loader" style="margin-left: 8px;"></div>
+             <div class="loader" id="ledgers-loader"></div>
           </button>
         </div>
       </div>
@@ -390,17 +511,17 @@
           <span class="modal-close-x" id="close-stock-modal-x">&times;</span>
         </div>
         <div class="modal-body">
-          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer with your client company open.</p>
-          <div class="form-group">
-            <label for="sync_stock_company_name">Company Name:</label>
-            <input type="text" id="sync_stock_company_name" placeholder="Enter the exact company name saved in Tally...">
+          <p class="modal-instructions">Ensure <strong>Tally Prime</strong> is running on this computer (Port 9000) with your client company open.</p>
+          <div class="input-field-group">
+            <label for="sync_stock_company_name">Company Name in Tally:</label>
+            <input type="text" id="sync_stock_company_name" placeholder="Enter the exact company name in Tally...">
           </div>
         </div>
         <div class="modal-footer">
-          <button class="close-modal-btn" id="close-stock-modal-btn">Close</button>
-          <button class="start-sync-btn" id="btn-sync-stock-action">
+          <button type="button" class="close-modal-btn" id="close-stock-modal-btn">Close</button>
+          <button type="button" class="start-sync-btn" id="btn-sync-stock-action">
              <span>Start Sync</span>
-             <div class="loader" id="stock-loader" style="margin-left: 8px;"></div>
+             <div class="loader" id="stock-loader"></div>
           </button>
         </div>
       </div>
@@ -408,65 +529,65 @@
 
     <!-- Modal for Creating Missing Stock Items -->
     <div id="create-stock-items-modal" class="modal">
-      <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-content modal-lg">
         <div class="modal-header">
           <h2>Create Missing Stock Items in Tally</h2>
           <span class="modal-close-x" id="close-create-items-modal-x">&times;</span>
         </div>
-        <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 22px; background: #ffffff;">
-          <p class="modal-instructions" style="margin-bottom: 0; color: #334155; font-size: 0.92rem;">These products were found in your Excel sheet but are missing from Tally's Item Stock.</p>
+        <div class="modal-body">
+          <p class="modal-instructions">These products were detected in your Excel sheet but are currently missing from Tally's Item Stock.</p>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label for="new_item_under" style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Stock Group (Under):</label>
-              <input type="text" id="new_item_under" value="Primary" placeholder="Enter stock group (e.g. Primary)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; background: #ffffff; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box;">
+          <div class="form-row-2">
+            <div class="input-field-group">
+              <label for="new_item_under">Stock Group (Under):</label>
+              <input type="text" id="new_item_under" value="Primary" placeholder="e.g. Primary">
             </div>
-            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-              <label style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Detected Unit(s) in Excel:</label>
-              <div id="detected-units-display" style="min-height: 44px; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; background: #f8fafc; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; box-sizing: border-box;">
-                <span style="font-size: 0.82rem; color: #64748b; font-style: italic;">No UOM column mapped</span>
+            <div class="input-field-group">
+              <label>Detected Unit(s) in Excel:</label>
+              <div id="detected-units-display" class="detected-units-box">
+                <span class="muted-italic">No UOM column mapped</span>
               </div>
             </div>
           </div>
 
-          <div id="units-warning-box" style="display: none; background: #fefce8; border: 1.5px solid #fde047; border-radius: 6px; padding: 10px 14px; font-size: 0.84rem; color: #713f12; line-height: 1.5;">
-            ⚠️ <strong>Before creating items:</strong> Make sure all unit(s) shown above are already created as <strong>Units of Measure</strong> in your Tally Prime company. The app will not create them — only use them.
+          <div id="units-warning-box" class="units-warning-alert" style="display: none;">
+            ⚠️ <strong>Before creating items:</strong> Ensure all detected unit(s) exist as <strong>Units of Measure</strong> in your Tally company.
           </div>
           
-          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
-            <label for="new_item_supply_type" style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Type of Supply:</label>
-            <select id="new_item_supply_type" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; background: #ffffff; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box;">
+          <div class="input-field-group">
+            <label for="new_item_supply_type">Type of Supply:</label>
+            <select id="new_item_supply_type">
               <option value="Goods">Goods</option>
               <option value="Services">Services</option>
               <option value="Capital Goods">Capital Goods</option>
             </select>
           </div>
 
-          <div>
-            <label style="font-weight: 700; color: #0f172a; margin-bottom: 6px; display: block; font-size: 0.85rem;">Items to be Created:</label>
-            <div style="max-height: 190px; overflow-y: auto; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px; background: #f8fafc;">
-              <ul id="missing-items-list-modal" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;"></ul>
+          <div class="input-field-group">
+            <label>Items to be Created:</label>
+            <div class="missing-items-scroll-box">
+              <ul id="missing-items-list-modal" class="missing-items-list"></ul>
             </div>
           </div>
         </div>
-        <div class="modal-footer" style="padding: 14px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-          <button class="close-modal-btn" id="close-create-items-modal-btn">Close</button>
-          <button class="start-sync-btn" id="btn-create-items-action" onclick="submitCreateStockItems()">
-             <span>Create Items</span>
-             <div class="loader" id="create-items-loader" style="margin-left: 8px;"></div>
+        <div class="modal-footer">
+          <button type="button" class="close-modal-btn" id="close-create-items-modal-btn">Close</button>
+          <button type="button" class="start-sync-btn" id="btn-create-items-action" onclick="submitCreateStockItems()">
+             <span>Create Items in Tally</span>
+             <div class="loader" id="create-items-loader"></div>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Modular Frontend JavaScript Files -->
-    <script src="{{ url_for('static', filename='js/config.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/upload.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/mapping.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/tally.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/verification.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/generator.js') }}?v=1.1"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}?v=18.0"></script>
+    <script src="{{ url_for('static', filename='js/upload.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/mapping.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/tally.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/verification.js') }}?v=17.0"></script>
+    <script src="{{ url_for('static', filename='js/generator.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=3.0"></script>
 </body>
 </html>

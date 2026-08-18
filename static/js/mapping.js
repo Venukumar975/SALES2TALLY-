@@ -18,13 +18,13 @@ function buildMappingGrid(headers) {
 
         if (field.required) {
             const reqBadge = document.createElement("span");
-            reqBadge.className = "badge";
-            reqBadge.innerText = "Required";
+            reqBadge.className = "badge badge-required";
+            reqBadge.innerText = "REQUIRED";
             titleSpan.appendChild(reqBadge);
         } else {
             const optBadge = document.createElement("span");
             optBadge.className = "badge badge-optional";
-            optBadge.innerText = "Optional";
+            optBadge.innerText = "OPTIONAL";
             titleSpan.appendChild(optBadge);
         }
 
@@ -38,7 +38,7 @@ function buildMappingGrid(headers) {
         const autoIndicator = document.createElement("div");
         autoIndicator.className = "auto-mapped-indicator";
         autoIndicator.id = `auto-match-ind-${field.id.replace(/\s+/g, "_")}`;
-        autoIndicator.innerHTML = `<span>⚡ Auto-matched</span>`;
+        autoIndicator.innerHTML = `<svg width="13" height="13" fill="#f59e0b" stroke="#f59e0b" viewBox="0 0 24 24" style="vertical-align: -2px; margin-right: 4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg><span style="color: #fbbf24; font-weight: 700;">Auto-matched</span>`;
         labelDiv.appendChild(autoIndicator);
 
         const selectContainer = document.createElement("div");

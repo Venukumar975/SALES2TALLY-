@@ -3,7 +3,7 @@ const targetFields = [
     { id: "Invoice Date", label: "Invoice Date", desc: "Date of the invoice transaction", required: true },
     { id: "Invoice No", label: "Invoice No", desc: "Invoice or reference identifier", required: true },
     { id: "Party Name", label: "Party Name", desc: "Customer or Supplier business ledger name", required: true },
-    { id: "GST no", label: "GST no", desc: "Supplier/Buyer GSTIN (Optional, blank if empty)", required: false },
+    { id: "GST no", label: "GST no", desc: "Supplier/Buyer GSTIN ", required: true },
     { id: "State Name", label: "State Name", desc: "Place of Supply / State name", required: true },
     { id: "Product", label: "Product", desc: "Name of the item or description of service", required: true },
     { id: "HSN Code", label: "HSN Code", desc: "HSN/SAC code of the product", required: true },

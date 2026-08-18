@@ -24,12 +24,15 @@ function resetFile() {
     document.getElementById("card-mapping").style.display = "none";
     document.getElementById("card-tally").style.display = "none";
     document.getElementById("card-generate").style.display = "none";
+    const cardExport = document.getElementById("card-export");
+    if (cardExport) cardExport.style.display = "none";
     document.getElementById("success-container").style.display = "none";
     document.getElementById("excel-success-container").style.display = "none";
     document.getElementById("sheet_select").innerHTML = '<option value="">-- Choose a sheet --</option>';
     hideStatus("upload-status");
     hideStatus("sheet-status");
     hideStatus("mapping-status");
+    updateStepper(1);
 }
 
 async function uploadFile(file) {
@@ -79,6 +82,8 @@ async function analyzeSheet(sheet) {
     document.getElementById("card-mapping").style.display = "none";
     document.getElementById("card-tally").style.display = "none";
     document.getElementById("card-generate").style.display = "none";
+    const cardExport = document.getElementById("card-export");
+    if (cardExport) cardExport.style.display = "none";
 
     try {
         const res = await fetch("/get-headers", {
@@ -97,6 +102,8 @@ async function analyzeSheet(sheet) {
             document.getElementById("card-mapping").style.display = "block";
             document.getElementById("card-tally").style.display = "block";
             document.getElementById("card-generate").style.display = "block";
+            if (cardExport) cardExport.style.display = "block";
+            updateStepper(2);
         } else {
             showStatus("sheet-status", null, `❌ Failed to read headers: ${data.error}`, "error");
         }

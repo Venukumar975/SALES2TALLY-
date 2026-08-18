@@ -73,20 +73,23 @@ def api_tally_create_missing_ledgers():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @tally_bp.route("/api/tally/create-missing-items", methods=["POST"])
+@tally_bp.route("/api/tally/create-missing-stock-items", methods=["POST"])
 def api_tally_create_missing_items():
     data = request.json or {}
     file_id = data.get("file_id")
     sheet_name = data.get("sheet_name")
     mappings = data.get("mappings", {})
-    header_row = data.get("header_row")
-    company_name = data.get("company_name", "").strip()
-    under = data.get("under", "Primary").strip()
-    units = data.get("units", "Nos").strip()
-    supply_type = data.get("supply_type", "Goods").strip()
-    products = data.get("products", [])
+    header_row = data.get("header_row", 1)
+    company_name = (data.get("company_name") or data.get("stock_company") or "").strip()
+    under = (data.get("under") or data.get("stock_group") or "Primary").strip()
+    units = (data.get("units") or data.get("detected_units") or "Nos").strip()
+    supply_type = (data.get("supply_type") or "Goods").strip()
+    products = data.get("products") or data.get("items") or []
 
-    if not company_name or not products:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    if not company_name:
+        return jsonify({"success": False, "error": "Company Name is required"}), 400
+    if not products:
+        return jsonify({"success": False, "error": "Products list is required"}), 400
 
     file_path = None
     if file_id:
@@ -97,7 +100,7 @@ def api_tally_create_missing_items():
                 break
 
     if not file_path:
-        return jsonify({"success": False, "error": "File not found"}), 404
+        return jsonify({"success": False, "error": "Source Excel file not found. Please upload again."}), 404
 
     try:
         created_count, ignored_count = create_missing_stock_items_in_tally(

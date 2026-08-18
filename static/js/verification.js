@@ -2,6 +2,20 @@
 
 let lastDetectedUnits = [];
 
+function switchVerificationView(activeViewId) {
+    const views = [
+        "party-check-results-container",
+        "product-check-results-container",
+        "units-check-results-container"
+    ];
+    views.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = (id === activeViewId) ? "flex" : "none";
+        }
+    });
+}
+
 async function checkPartyNames() {
     const sheet = document.getElementById("sheet_select").value;
     const rowVal = document.getElementById("header_row").value || 1;
@@ -39,7 +53,6 @@ async function checkPartyNames() {
 
     showStatus("mapping-status", "check-parties-loader", "Checking party names against Tally ledgers...", "info");
     document.getElementById("btn-check-parties").disabled = true;
-    document.getElementById("party-check-results-container").style.display = "none";
 
     const fromDate = document.getElementById("filter-from-date").value;
     const toDate = document.getElementById("filter-to-date").value;
@@ -63,73 +76,88 @@ async function checkPartyNames() {
 
         if (data.success) {
             hideStatus("mapping-status");
-            document.getElementById("party-check-results-container").style.display = "flex";
+            switchVerificationView("party-check-results-container");
 
-            // 1. Perfect matches
+                        // 1. Perfect matches -> Isolated clean single card with 100% Match badge
             document.getElementById("count-perfect").innerText = data.perfect_matches.length;
             const listPerf = document.getElementById("list-perfect");
+            const sectFuzzy = document.getElementById("section-fuzzy-parties");
+            listPerf.innerHTML = "";
+
             if (data.perfect_matches.length > 0) {
-                listPerf.innerText = data.perfect_matches.join(", ");
-                document.getElementById("report-perfect").style.display = "block";
+                data.perfect_matches.forEach(name => {
+                    const box = document.createElement("div");
+                    box.className = "isolated-item-box compact exact-match-box";
+                    box.innerHTML = `
+                        <div class="item-box-title">${name}</div>
+                        <span class="match-badge-100">100% Match</span>
+                    `;
+                    listPerf.appendChild(box);
+                });
             } else {
-                listPerf.innerText = "No exact matches found.";
-                document.getElementById("report-perfect").style.display = "none";
+                listPerf.innerHTML = '<div class="empty-state-notice">No exact 100% matches found.</div>';
             }
 
-            // 2. Similar matches
+            // 2. Similar matches (< 100%) -> Side-by-side comparison boxes
             document.getElementById("count-similar").innerText = data.similar_matches.length;
             const listSim = document.getElementById("list-similar");
             listSim.innerHTML = "";
+
             if (data.similar_matches.length > 0) {
+                if (sectFuzzy) sectFuzzy.style.display = "block";
                 data.similar_matches.forEach(item => {
-                    const div = document.createElement("div");
-                    div.style.display = "flex";
-                    div.style.justifyContent = "space-between";
-                    div.style.borderBottom = "1px dashed rgba(79, 70, 229, 0.1)";
-                    div.style.padding = "4px 0";
-                    div.innerHTML = `
-                        <span>Original: <strong>${item.original}</strong> &rarr; Tally Match: <strong style="color: var(--accent-primary);">${item.matched}</strong></span>
-                        <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">${item.score}% match</span>
+                    const box = document.createElement("div");
+                    box.className = "fuzzy-side-by-side-box";
+                    box.innerHTML = `
+                        <div class="side-col excel-side">
+                            <span class="side-label">Excel Name:</span>
+                            <span class="side-val-excel">${item.original}</span>
+                        </div>
+                        <div class="side-arrow">&rarr;</div>
+                        <div class="side-col tally-side">
+                            <span class="side-label">Tally Ledger:</span>
+                            <span class="side-val-tally">${item.matched}</span>
+                        </div>
+                        <span class="match-badge-fuzzy">${item.score}% Match</span>
                     `;
-                    listSim.appendChild(div);
+                    listSim.appendChild(box);
                 });
-                document.getElementById("report-similar").style.display = "block";
             } else {
-                document.getElementById("report-similar").style.display = "none";
+                if (sectFuzzy) sectFuzzy.style.display = "none";
             }
 
-            // 3. Non-existing
+            // 3. Non-existing -> Isolated cards with GST & State info
             document.getElementById("count-missing").innerText = data.non_existing.length;
+            const missingCardsList = document.getElementById("missing-parties-cards-list");
             const tbody = document.getElementById("tbody-missing");
+            missingCardsList.innerHTML = "";
             tbody.innerHTML = "";
             lastNonExistingParties = data.non_existing;
 
             if (data.non_existing.length > 0) {
                 data.non_existing.forEach(item => {
-                    const tr = document.createElement("tr");
-                    tr.style.borderBottom = "1px solid var(--border-color)";
-                    tr.innerHTML = `
-                        <td style="padding: 6px 8px; font-weight: 600;">${item.name}</td>
-                        <td style="padding: 6px 8px;">${item.state}</td>
-                        <td style="padding: 6px 8px; font-family: monospace;">${item.gstin || '-'}</td>
-                        <td style="padding: 6px 8px;">
-                            <span class="badge" style="${item.gstin ? 'background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid #10b981;' : 'background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid #f59e0b;'}">
-                                ${item.gstin ? 'Regular' : 'Unregistered'}
-                            </span>
-                        </td>
+                    const box = document.createElement("div");
+                    box.className = "isolated-item-box compact missing";
+                    box.innerHTML = `
+                        <div class="missing-info-row">
+                            <span class="item-box-title">${item.name}</span>
+                            <span class="item-sub-tag">State: ${item.state || 'N/A'}</span>
+                            <span class="item-sub-tag font-mono">GSTIN: ${item.gstin || 'None'}</span>
+                        </div>
+                        <span class="missing-badge">${item.gstin ? 'Regular' : 'Unregistered'}</span>
                     `;
-                    tbody.appendChild(tr);
+                    missingCardsList.appendChild(box);
                 });
-                document.getElementById("report-missing").style.display = "block";
                 
                 const createBtn = document.getElementById("btn-create-tally-ledgers");
-                createBtn.style.display = "block";
+                createBtn.style.display = "inline-flex";
                 createBtn.disabled = false;
-                createBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Party Ledgers in Tally`;
+                createBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Ledgers in Tally`;
             } else {
-                document.getElementById("report-missing").style.display = "none";
+                missingCardsList.innerHTML = '<div class="empty-state-notice">✓ All party ledgers exist in Tally - No missing ledgers!</div>';
                 document.getElementById("btn-create-tally-ledgers").style.display = "none";
             }
+            updateStepper(4);
         } else {
             showStatus("mapping-status", null, `❌ Verification failed: ${data.error}`, "error");
         }
@@ -177,7 +205,6 @@ async function checkProductNames() {
 
     showStatus("mapping-status", "check-products-loader", "Checking product names against Tally stock items...", "info");
     document.getElementById("btn-check-products").disabled = true;
-    document.getElementById("product-check-results-container").style.display = "none";
 
     const fromDate = document.getElementById("filter-from-date").value;
     const toDate = document.getElementById("filter-to-date").value;
@@ -201,35 +228,53 @@ async function checkProductNames() {
 
         if (data.success) {
             hideStatus("mapping-status");
-            document.getElementById("product-check-results-container").style.display = "flex";
+            switchVerificationView("product-check-results-container");
 
+            // 1. Matched products -> Isolated boxes with 100% Match badge
             document.getElementById("count-products-perfect").innerText = data.perfect_matches.length;
             const listPerf = document.getElementById("list-products-perfect");
+            listPerf.innerHTML = "";
+
             if (data.perfect_matches.length > 0) {
-                listPerf.innerText = data.perfect_matches.join(", ");
-                document.getElementById("report-products-perfect").style.display = "block";
+                data.perfect_matches.forEach(item => {
+                    const box = document.createElement("div");
+                    box.className = "isolated-item-box compact";
+                    box.innerHTML = `
+                        <div class="item-box-title">${item}</div>
+                        <span class="match-badge-100">100% Match</span>
+                    `;
+                    listPerf.appendChild(box);
+                });
             } else {
-                listPerf.innerText = "No exact matches found.";
-                document.getElementById("report-products-perfect").style.display = "none";
+                listPerf.innerHTML = '<div class="empty-state-notice">No matched stock items found.</div>';
             }
 
+            // 2. Missing products -> Isolated boxes
             document.getElementById("count-products-missing").innerText = data.non_existing.length;
             const listMiss = document.getElementById("list-products-missing");
+            listMiss.innerHTML = "";
             lastNonExistingProducts = data.non_existing;
             lastDetectedUnits = data.detected_units || [];
 
             if (data.non_existing.length > 0) {
-                listMiss.innerText = data.non_existing.join(", ");
-                document.getElementById("report-products-missing").style.display = "block";
+                data.non_existing.forEach(item => {
+                    const box = document.createElement("div");
+                    box.className = "isolated-item-box compact";
+                    box.innerHTML = `
+                        <div class="item-box-title">${item}</div>
+                        <span class="missing-badge">Missing from Stock</span>
+                    `;
+                    listMiss.appendChild(box);
+                });
                 
                 const createItemsBtn = document.getElementById("btn-create-tally-items");
-                createItemsBtn.style.display = "block";
-                createItemsBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Stock Items in Tally`;
+                createItemsBtn.style.display = "inline-flex";
+                createItemsBtn.querySelector("span").innerText = `Create ${data.non_existing.length} Items in Tally`;
             } else {
-                listMiss.innerText = "No missing products found.";
-                document.getElementById("report-products-missing").style.display = "none";
+                listMiss.innerHTML = '<div class="empty-state-notice">✓ All product items exist in Tally Item Stock!</div>';
                 document.getElementById("btn-create-tally-items").style.display = "none";
             }
+            updateStepper(4);
         } else {
             showStatus("mapping-status", null, `❌ Verification failed: ${data.error}`, "error");
         }
@@ -237,6 +282,72 @@ async function checkProductNames() {
         showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
     } finally {
         document.getElementById("btn-check-products").disabled = false;
+    }
+}
+
+async function checkUnits() {
+    const sheet = document.getElementById("sheet_select").value;
+    const rowVal = document.getElementById("header_row").value || 1;
+    if (!tempFileId) {
+        showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
+        return;
+    }
+    if (!sheet) {
+        showStatus("mapping-status", null, "⚠️ Please select a worksheet sheet first.", "error");
+        return;
+    }
+
+    const mappings = {};
+    targetFields.forEach(field => {
+        const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
+        if (dropdown && dropdown.value) {
+            mappings[field.id] = dropdown.value;
+        }
+    });
+
+    showStatus("mapping-status", "check-units-loader", "Detecting unit types from Excel...", "info");
+    document.getElementById("btn-check-units").disabled = true;
+
+    try {
+        const res = await fetch("/api/check-units", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                file_id: tempFileId,
+                sheet_name: sheet,
+                mappings: mappings,
+                header_row: rowVal
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            hideStatus("mapping-status");
+            switchVerificationView("units-check-results-container");
+
+            const badgeList = document.getElementById("units-badge-list");
+            badgeList.innerHTML = "";
+
+            if (data.units && data.units.length > 0) {
+                data.units.forEach(u => {
+                    const badge = document.createElement("span");
+                    badge.className = "unit-pill";
+                    badge.innerText = u;
+                    badgeList.appendChild(badge);
+                });
+            } else if (!data.uom_mapped) {
+                badgeList.innerHTML = '<span style="font-size: 0.88rem; color: #f87171; font-weight: 700;">⚠️ UOM column is not mapped yet. Please map the UOM column in Step 2.</span>';
+            } else {
+                badgeList.innerHTML = '<span style="font-size: 0.88rem; color: var(--text-muted); font-style: italic;">No specific unit values found in mapped UOM column — fallback: Nos</span>';
+            }
+            updateStepper(4);
+        } else {
+            showStatus("mapping-status", null, `❌ Failed to check units: ${data.error}`, "error");
+        }
+    } catch (err) {
+        showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
+    } finally {
+        document.getElementById("btn-check-units").disabled = false;
     }
 }
 
@@ -297,69 +408,59 @@ function openCreateItemsModal() {
         return;
     }
 
-    // Populate detected units badges
-    const unitsDisplay = document.getElementById("detected-units-display");
+    const list = document.getElementById("missing-items-list-modal");
+    list.innerHTML = "";
+    lastNonExistingProducts.forEach(item => {
+        const li = document.createElement("li");
+        li.innerText = `• ${item}`;
+        li.style.color = "var(--text-primary)";
+        li.style.fontSize = "0.88rem";
+        list.appendChild(li);
+    });
+
+    const uomDisplay = document.getElementById("detected-units-display");
     const warningBox = document.getElementById("units-warning-box");
-    unitsDisplay.innerHTML = "";
+    uomDisplay.innerHTML = "";
+
     if (lastDetectedUnits && lastDetectedUnits.length > 0) {
-        lastDetectedUnits.forEach(unit => {
+        lastDetectedUnits.forEach(u => {
             const badge = document.createElement("span");
-            badge.innerText = unit;
-            badge.style.cssText = "background: #e0e7ff; color: #3730a3; border: 1.5px solid #c7d2fe; border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; font-weight: 700; white-space: nowrap;";
-            unitsDisplay.appendChild(badge);
+            badge.innerText = u;
+            badge.className = "unit-pill";
+            uomDisplay.appendChild(badge);
         });
         warningBox.style.display = "block";
     } else {
-        unitsDisplay.innerHTML = '<span style="font-size: 0.82rem; color: #64748b; font-style: italic;">No UOM column mapped — fallback: Nos</span>';
+        uomDisplay.innerHTML = '<span class="muted-italic">Fallback: Nos (No UOM column mapped)</span>';
         warningBox.style.display = "none";
     }
 
-    const listDiv = document.getElementById("missing-items-list-modal");
-    listDiv.innerHTML = "";
-    lastNonExistingProducts.forEach(prod => {
-        const li = document.createElement("li");
-        li.style.display = "flex";
-        li.style.justifyContent = "space-between";
-        li.style.alignItems = "center";
-        li.style.background = "#ffffff";
-        li.style.border = "1px solid #e2e8f0";
-        li.style.padding = "8px 12px";
-        li.style.borderRadius = "5px";
-        li.style.fontSize = "0.88rem";
-        li.style.fontWeight = "600";
-        li.style.color = "#0f172a";
-        li.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.04)";
-        li.innerText = prod;
-        listDiv.appendChild(li);
-    });
-
-    document.getElementById("create-stock-items-modal").style.display = "block";
+    document.getElementById("create-stock-items-modal").style.display = "flex";
 }
 
 async function submitCreateStockItems() {
     const stockCo = document.getElementById("tally_stock_company_select").value;
-    const sheet = document.getElementById("sheet_select").value;
-    const rowVal = document.getElementById("header_row").value || 1;
-    const under = document.getElementById("new_item_under").value.trim();
-    const supplyType = document.getElementById("new_item_supply_type").value;
+    const stockGroup = document.getElementById("new_item_under").value.trim() || "Primary";
+    const supplyType = document.getElementById("new_item_supply_type").value || "Goods";
 
-    const mappings = {};
-    targetFields.forEach(field => {
-        const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
-        if (dropdown && dropdown.value) {
-            mappings[field.id] = dropdown.value;
-        }
-    });
+    if (!stockCo) {
+        alert("Please select a Tally Stock Company first.");
+        return;
+    }
+    if (!lastNonExistingProducts || lastNonExistingProducts.length === 0) {
+        alert("No missing stock items to create.");
+        return;
+    }
 
-    const loader = document.getElementById("create-items-loader");
-    const btnLoader = document.getElementById("create-items-btn-loader");
     const createBtn = document.getElementById("btn-create-items-action");
     const openBtn = document.getElementById("btn-create-tally-items");
+    const loader = document.getElementById("create-items-loader");
+    const btnLoader = document.getElementById("create-items-btn-loader");
 
-    loader.style.display = "inline-block";
-    if (btnLoader) btnLoader.style.display = "inline-block";
     createBtn.disabled = true;
     openBtn.disabled = true;
+    loader.style.display = "inline-block";
+    if (btnLoader) btnLoader.style.display = "inline-block";
 
     try {
         const res = await fetch("/api/tally/create-missing-items", {
@@ -367,11 +468,12 @@ async function submitCreateStockItems() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 file_id: tempFileId,
-                sheet_name: sheet,
-                mappings: mappings,
-                header_row: rowVal,
+                sheet_name: document.getElementById("sheet_select")?.value || "",
+                mappings: getSelectedMappings(),
+                header_row: parseInt(document.getElementById("header_row")?.value || "1", 10),
                 company_name: stockCo,
-                under: under,
+                under: stockGroup,
+                units: document.getElementById("modal-items-detected-units")?.innerText?.trim() || "Nos",
                 supply_type: supplyType,
                 products: lastNonExistingProducts
             })
@@ -398,71 +500,3 @@ async function submitCreateStockItems() {
         openBtn.disabled = false;
     }
 }
-
-async function checkUnits() {
-    const sheet = document.getElementById("sheet_select").value;
-    const rowVal = document.getElementById("header_row").value || 1;
-    if (!tempFileId) {
-        showStatus("mapping-status", null, "⚠️ Please upload an Excel workbook first.", "error");
-        return;
-    }
-    if (!sheet) {
-        showStatus("mapping-status", null, "⚠️ Please select a worksheet sheet first.", "error");
-        return;
-    }
-
-    const mappings = {};
-    targetFields.forEach(field => {
-        const dropdown = document.getElementById(`select-${field.id.replace(/\s+/g, "_")}`);
-        if (dropdown && dropdown.value) {
-            mappings[field.id] = dropdown.value;
-        }
-    });
-
-    showStatus("mapping-status", "check-units-loader", "Detecting unit types from Excel...", "info");
-    document.getElementById("btn-check-units").disabled = true;
-    document.getElementById("units-check-results-container").style.display = "none";
-
-    try {
-        const res = await fetch("/api/check-units", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                file_id: tempFileId,
-                sheet_name: sheet,
-                mappings: mappings,
-                header_row: rowVal
-            })
-        });
-
-        const data = await res.json();
-        if (data.success) {
-            hideStatus("mapping-status");
-            const container = document.getElementById("units-check-results-container");
-            const badgeList = document.getElementById("units-badge-list");
-            badgeList.innerHTML = "";
-
-            if (data.units && data.units.length > 0) {
-                data.units.forEach(u => {
-                    const badge = document.createElement("span");
-                    badge.innerText = u;
-                    badge.style.cssText = "background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 20px; padding: 4px 14px; font-size: 0.85rem; font-weight: 700; white-space: nowrap;";
-                    badgeList.appendChild(badge);
-                });
-            } else if (!data.uom_mapped) {
-                badgeList.innerHTML = '<span style="font-size: 0.85rem; color: #f87171;">⚠️ UOM column is not mapped yet. Please map the UOM column in Step 3.</span>';
-            } else {
-                badgeList.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">No specific unit values found in mapped UOM column — fallback: Nos</span>';
-            }
-
-            container.style.display = "flex";
-        } else {
-            showStatus("mapping-status", null, `❌ Failed to check units: ${data.error}`, "error");
-        }
-    } catch (err) {
-        showStatus("mapping-status", null, `❌ Network error: ${err.message}`, "error");
-    } finally {
-        document.getElementById("btn-check-units").disabled = false;
-    }
-}
-
