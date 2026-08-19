@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=16.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=34.0">
 </head>
 <body>
     <div class="container">
@@ -580,6 +580,8 @@
       </div>
     </div>
 
+    {% include 'audit_modal.html' %}
+
     <!-- Modular Frontend JavaScript Files -->
     <script src="{{ url_for('static', filename='js/config.js') }}?v=3.0"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}?v=18.0"></script>
@@ -587,7 +589,7 @@
     <script src="{{ url_for('static', filename='js/mapping.js') }}?v=3.0"></script>
     <script src="{{ url_for('static', filename='js/tally.js') }}?v=3.0"></script>
     <script src="{{ url_for('static', filename='js/verification.js') }}?v=17.0"></script>
-    <script src="{{ url_for('static', filename='js/generator.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/generator.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v=3.0"></script>
 </body>
 </html>

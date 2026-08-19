@@ -185,14 +185,14 @@ body {
     top: 0;
     z-index: 9000;
     width: 100%;
-    background: rgba(8, 13, 20, 0.72);
-    background-image: linear-gradient(180deg, rgba(8, 13, 20, 0.95) 0%, rgba(8, 13, 20, 0.55) 100%);
-    backdrop-filter: blur(30px) saturate(200%);
-    -webkit-backdrop-filter: blur(30px) saturate(200%);
-    padding: 12px 0 14px;
+    background: rgba(15, 23, 42, 0.25);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    padding: 10px 0 12px;
     margin-bottom: 6px;
-    border-bottom: 1.5px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.65);
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .workflow-stepper {
@@ -1633,4 +1633,381 @@ select:focus {
 .exact-match-box:hover {
     background: rgba(30, 41, 59, 0.75);
     border-color: rgba(16, 185, 129, 0.4);
+}
+
+
+/* ==========================================================================
+   ULTRA-WIDE TABLE-BASED XML AUDIT REPORT MODAL
+   ========================================================================== */
+.modal-backdrop-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(4, 8, 15, 0.85) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    z-index: 999999 !important;
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+    box-sizing: border-box !important;
+}
+
+.modal-backdrop-overlay.active {
+    display: flex !important;
+}
+
+.audit-window-card {
+    background: rgba(15, 23, 42, 0.98) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.22) !important;
+    border-radius: var(--radius-lg) !important;
+    width: 100% !important;
+    max-width: 1080px !important;
+    max-height: 88vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+    overflow: hidden !important;
+    animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.audit-window-header {
+    background: rgba(15, 23, 42, 0.98) !important;
+    padding: 16px 24px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+    flex-shrink: 0 !important;
+}
+
+.audit-header-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.audit-shield-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(16, 185, 129, 0.15);
+    border: 1.5px solid var(--brand-primary);
+    color: var(--brand-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px var(--brand-glow);
+    flex-shrink: 0;
+}
+
+.audit-main-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+}
+
+.audit-sub-title {
+    font-size: 0.80rem;
+    color: var(--text-secondary);
+    margin: 2px 0 0;
+}
+
+.audit-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+    font-size: 1.4rem;
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.audit-close-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+.audit-window-body {
+    padding: 20px 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
+.audit-window-body::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.audit-window-body::-webkit-scrollbar-track {
+    background: rgba(10, 16, 26, 0.5) !important;
+    border-radius: 10px !important;
+}
+
+.audit-window-body::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4) !important;
+    border-radius: 10px !important;
+}
+
+.audit-window-body::-webkit-scrollbar-thumb:hover {
+    background: var(--brand-primary) !important;
+}
+
+.audit-summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    background: rgba(10, 16, 26, 0.65);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-md);
+    padding: 14px 20px;
+    flex-shrink: 0;
+}
+
+.audit-kpi-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.kpi-label {
+    font-family: var(--font-mono);
+    font-size: 0.70rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.kpi-value {
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    font-weight: 900;
+}
+
+.kpi-sub {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+
+.audit-kpi-divider {
+    width: 1px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.audit-table-container {
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-md);
+    background: rgba(10, 16, 26, 0.45);
+    flex-shrink: 0;
+}
+
+.audit-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.audit-grid-table thead {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.14);
+}
+
+.audit-grid-table th {
+    padding: 11px 16px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+.audit-grid-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.audit-grid-table tr:last-child td {
+    border-bottom: none;
+}
+
+.audit-grid-table tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.check-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.check-icon-bullet {
+    font-size: 1.05rem;
+}
+
+.scope-text {
+    font-size: 0.80rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.result-text {
+    font-size: 0.84rem;
+    color: #f1f5f9;
+}
+
+.audit-pill {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.pill-pass {
+    background: rgba(16, 185, 129, 0.18);
+    border: 1px solid #10b981;
+    color: #34d399;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+.pill-gold {
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid #f59e0b;
+    color: #fbbf24;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.audit-window-footer {
+    background: rgba(15, 23, 42, 0.98) !important;
+    padding: 14px 24px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 14px !important;
+    border-top: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+    flex-shrink: 0 !important;
+}
+
+.audit-footer-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.audit-footer-close-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.audit-footer-download-btn {
+    background: linear-gradient(135deg, var(--brand-primary), #059669);
+    color: #ffffff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    font-weight: 800;
+    font-size: 0.88rem;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+}
+
+.audit-footer-download-btn:hover {
+    background: #047857;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.audit-header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.esc-exit-hint {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.esc-kbd-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #f1f5f9;
+}
+
+.audit-close-btn-red {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #f87171 !important;
+    font-size: 1.45rem !important;
+    line-height: 1 !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+.audit-close-btn-red:hover {
+    background: #ef4444 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    transform: scale(1.08) !important;
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.5) !important;
+}
+
+.col-sl-no {
+    text-align: center !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 800 !important;
+    font-size: 0.82rem !important;
+    color: var(--text-muted) !important;
 }

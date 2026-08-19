@@ -1,9 +1,10 @@
 import os
 from flask import Blueprint, request, jsonify
 
-from config import UPLOAD_FOLDER
+from config import UPLOAD_FOLDER, PROCESSED_FOLDER
 from services.xml_generator import generate_tally_vouchers_xml
 from services.excel_generator import generate_formatted_excel
+from services.xml_verifier import audit_generated_xml_file
 
 generator_bp = Blueprint("generator_bp", __name__)
 
@@ -54,10 +55,14 @@ def generate():
             to_date=to_date,
             tax_ledger_mappings=tax_ledger_mappings
         )
+        xml_path = os.path.join(PROCESSED_FOLDER, filename)
+        audit_report = audit_generated_xml_file(xml_path)
         return jsonify({
             "success": True,
             "filename": filename,
-            "row_count": row_count
+            "row_count": row_count,
+            "download_url": f"/download/{filename}",
+            "audit_report": audit_report
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

@@ -1,0 +1,151 @@
+<!-- ULTRA-WIDE XML PRE-FLIGHT INTEGRITY AUDIT REPORT MODAL -->
+<div id="xml-audit-modal" class="modal-backdrop-overlay" style="display: none;" onclick="if(event.target===this){this.classList.remove('active');this.style.display='none';}">
+  <div class="audit-window-card">
+    
+    <!-- HEADER -->
+    <div class="audit-window-header">
+      <div class="audit-header-brand">
+        <div class="audit-shield-icon">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+        </div>
+        <div>
+          <h2 class="audit-main-title">Sales Register Verification &amp; Audit Report</h2>
+          <p class="audit-sub-title">Pre-import verification check completed before importing into Tally Prime</p>
+        </div>
+      </div>
+      
+      <!-- ESC HINT & RED CLOSE BUTTON -->
+      <div class="audit-header-right">
+        <span class="esc-exit-hint">Press <kbd class="esc-kbd-badge">ESC</kbd> to exit</span>
+        <button type="button" id="close-audit-modal-top-btn" class="audit-close-btn-red" onclick="const m=document.getElementById('xml-audit-modal'); if(m){m.classList.remove('active'); m.style.display='none';}" title="Close (ESC)">&times;</button>
+      </div>
+    </div>
+
+    <!-- SCROLLABLE BODY -->
+    <div class="audit-window-body">
+      
+      <!-- TOP 3 KPI SUMMARY BAR -->
+      <div class="audit-summary-bar">
+        <div class="audit-kpi-item">
+          <span class="kpi-label">TOTAL INVOICES</span>
+          <span class="kpi-value text-emerald" id="audit-kpi-vouchers">0</span>
+          <span class="kpi-sub">Total Bills</span>
+        </div>
+        <div class="audit-kpi-divider"></div>
+        <div class="audit-kpi-item">
+          <span class="kpi-label">DEBIT &amp; CREDIT BALANCE</span>
+          <span class="kpi-value text-emerald" id="audit-kpi-balance">100% Balanced</span>
+          <span class="kpi-sub" id="audit-kpi-unbalanced">0 Unbalanced Invoices</span>
+        </div>
+        <div class="audit-kpi-divider"></div>
+        <div class="audit-kpi-item">
+          <span class="kpi-label">TOTAL DEBIT AMOUNT</span>
+          <span class="kpi-value text-emerald" id="audit-kpi-amount">₹0.00</span>
+          <span class="kpi-sub">Total Debits</span>
+        </div>
+      </div>
+
+      <!-- MAIN AUDIT VERIFICATION TABLE (WITH SL. NO.) -->
+      <div class="audit-table-container">
+        <table class="audit-grid-table">
+          <thead>
+            <tr>
+              <th style="width: 7%; text-align: center;">Sl. No.</th>
+              <th style="width: 25%;">Type of Check</th>
+              <th style="width: 24%;">Check Scope</th>
+              <th style="width: 32%;">Verification Details</th>
+              <th style="width: 12%; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1: Total Invoices -->
+            <tr>
+              <td class="col-sl-no">01</td>
+              <td><strong>Total Invoices Check</strong></td>
+              <td><span class="scope-text">Total Number of Bills</span></td>
+              <td><span id="tab-total-vouchers" class="result-text">0 Invoices Successfully Created from Excel</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass">PASSED</span></td>
+            </tr>
+
+            <!-- Row 2: Invoice No as Voucher No -->
+            <tr>
+              <td class="col-sl-no">02</td>
+              <td><strong>Invoice Number Check</strong></td>
+              <td><span class="scope-text">Original Bill Numbers</span></td>
+              <td><span id="tab-inv-no-details" class="result-text">655 / 655 Bills matched with exact Invoice Numbers</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass" id="pill-inv-no">PASSED</span></td>
+            </tr>
+
+            <!-- Row 3: Dates -->
+            <tr>
+              <td class="col-sl-no">03</td>
+              <td><strong>Invoice Date Check</strong></td>
+              <td><span class="scope-text">Voucher &amp; Reference Dates</span></td>
+              <td><span id="tab-dates-details" class="result-text">655 / 655 Invoices matched with correct dates</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass" id="pill-dates">PASSED</span></td>
+            </tr>
+
+            <!-- Row 4: Voucher Type -->
+            <tr>
+              <td class="col-sl-no">04</td>
+              <td><strong>Voucher Type Check</strong></td>
+              <td><span class="scope-text">Sales Voucher Mode</span></td>
+              <td><span class="result-text"><strong>Item Invoice</strong></span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass">PASSED</span></td>
+            </tr>
+
+            <!-- Row 5: Party Details -->
+            <tr>
+              <td class="col-sl-no">05</td>
+              <td><strong>Party Details Check</strong></td>
+              <td><span class="scope-text">Customer Name &amp; State</span></td>
+              <td><span id="tab-party-details" class="result-text">655 / 655 Invoices matched with Customer details</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass" id="pill-party">PASSED</span></td>
+            </tr>
+
+            <!-- Row 6: B2B vs B2C -->
+            <tr>
+              <td class="col-sl-no">06</td>
+              <td><strong>B2B &amp; B2C Invoices Breakdown</strong></td>
+              <td><span class="scope-text">Registered vs Unregistered</span></td>
+              <td><span id="tab-gst-classification" class="result-text">B2B Invoices: <strong>28</strong> (with GSTIN) &nbsp;|&nbsp; B2C Invoices: <strong>627</strong></span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-gold">CLASSIFIED</span></td>
+            </tr>
+
+            <!-- Row 7: Master Validity -->
+            <tr>
+              <td class="col-sl-no">07</td>
+              <td><strong>Party &amp; Stock Names Check</strong></td>
+              <td><span class="scope-text">Customer &amp; Item Names in Tally</span></td>
+              <td><span id="tab-masters-validity" class="result-text">All Customer &amp; Product names verified in Tally</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass">100% MATCHED</span></td>
+            </tr>
+
+            <!-- Row 8: Debit Credit Balance Check -->
+            <tr>
+              <td class="col-sl-no">08</td>
+              <td><strong>Debit &amp; Credit Balance Check</strong></td>
+              <td><span class="scope-text">Total Debits Equal Total Credits</span></td>
+              <td><span id="tab-balance-details" class="result-text">100% Matched (Zero Difference Across All Invoices)</span></td>
+              <td style="text-align: center;"><span class="audit-pill pill-pass" id="pill-balance">100% BALANCED</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- FOOTER (DOWNLOAD BUTTON ONLY) -->
+    <div class="audit-window-footer">
+      <a id="audit-download-xml-btn" href="#" class="audit-footer-download-btn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span>Download Tally XML File</span>
+      </a>
+    </div>
+
+  </div>
+</div>
