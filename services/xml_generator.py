@@ -73,24 +73,43 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
         party_name = first_row.get("Party Name", "Cash")
         party_name_clean = escape_xml_value(party_name)
 
-        # Retrieve live party details fetched from Tally Prime
+        # Retrieve live party details fetched directly from Tally Prime
         party_meta = live_parties_map.get(party_name.lower().strip(), {})
         buyer_name = party_meta.get("name") or party_name
+        buyer_name_clean = escape_xml_value(buyer_name)
         party_state = party_meta.get("state") or ""
+        party_state_clean = escape_xml_value(party_state)
         country_name = party_meta.get("country") or "India"
-        reg_type = party_meta.get("registration_type") or "Unregistered"
+        country_name_clean = escape_xml_value(country_name)
+        reg_type = party_meta.get("registration_type") or ("Regular" if gstin_no else "Unregistered/Consumer")
+        if reg_type.lower() == "unregistered":
+            reg_type = "Unregistered/Consumer"
+        reg_type_clean = escape_xml_value(reg_type)
         gstin_no = party_meta.get("gstin") or ""
+        gstin_no_clean = escape_xml_value(gstin_no)
 
-        # Place of supply is the state of the party name
-        place_of_supply = party_state
+        # Place of supply matches the party's official registered / shipping state
+        place_of_supply = party_state_clean
 
-        state_tags = ""
-        if party_state:
-            state_tags = f"""
-        <STATENAME>{escape_xml_value(party_state)}</STATENAME>
-        <PLACEOFSUPPLY>{escape_xml_value(place_of_supply)}</PLACEOFSUPPLY>"""
+        # Left Section: Buyer (Bill to) party tags
+        buyer_state_tags = ""
+        if party_state_clean:
+            buyer_state_tags = f"""
+        <STATENAME>{party_state_clean}</STATENAME>
+        <PLACEOFSUPPLY>{place_of_supply}</PLACEOFSUPPLY>"""
 
-        gstin_tag = f"\n        <PARTYGSTIN>{escape_xml_value(gstin_no)}</PARTYGSTIN>" if gstin_no else ""
+        gstin_tag = f"\n        <PARTYGSTIN>{gstin_no_clean}</PARTYGSTIN>" if gstin_no_clean else ""
+
+        # Right Section: Consignee (Ship to) party tags
+        # In manual Tally Prime voucher entry, pressing Enter on Party Details auto-populates
+        # the right-hand Consignee (Ship to) section with party name, state, and country.
+        # Bulk XML imports do not trigger interactive UI hooks, so explicit Consignee tags
+        # are required to populate both sides and avoid GSTR-1 "Uncertain Transactions".
+        consignee_state_tag = f"\n        <CONSIGNEESTATENAME>{party_state_clean}</CONSIGNEESTATENAME>" if party_state_clean else ""
+        consignee_tags = f"""
+        <BASICSHIPPEDBYNAME>{buyer_name_clean}</BASICSHIPPEDBYNAME>
+        <CONSIGNEEMAILINGNAME>{buyer_name_clean}</CONSIGNEEMAILINGNAME>{consignee_state_tag}
+        <CONSIGNEECOUNTRYNAME>{country_name_clean}</CONSIGNEECOUNTRYNAME>"""
         
         # Accumulate inventory lines and totals
         inventory_entries = ""
@@ -229,9 +248,12 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
         <REFERENCEDATE>{date_tally}</REFERENCEDATE>
         <ISINVOICE>Yes</ISINVOICE>
         <PARTYLEDGERNAME>{party_name_clean}</PARTYLEDGERNAME>
-        <PARTYNAME>{escape_xml_value(buyer_name)}</PARTYNAME>{state_tags}{gstin_tag}
-        <COUNTRYOFRESIDENCE>{escape_xml_value(country_name)}</COUNTRYOFRESIDENCE>
-        <GSTREGISTRATIONTYPE>{escape_xml_value(reg_type)}</GSTREGISTRATIONTYPE>
+        <!-- Buyer (Bill to) Details - Left Section -->
+        <PARTYNAME>{buyer_name_clean}</PARTYNAME>
+        <BASICBUYERNAME>{buyer_name_clean}</BASICBUYERNAME>{buyer_state_tags}{gstin_tag}
+        <COUNTRYOFRESIDENCE>{country_name_clean}</COUNTRYOFRESIDENCE>
+        <GSTREGISTRATIONTYPE>{reg_type_clean}</GSTREGISTRATIONTYPE>
+        <!-- Consignee (Ship to) Details - Right Section -->{consignee_tags}
         <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
         <NARRATION>{escape_xml_value(narration_text)}</NARRATION>
         {ledger_entries_xml}

@@ -25,7 +25,7 @@ When creating customer party ledgers in Tally Prime, the XML payload must popula
 | **State Name** | `<PLACEOFSUPPLY>` | `<LEDGSTREGDETAILS.LIST>` | Populates default **Place of Supply** for GST billing. |
 | **GSTIN / UIN** | `<PARTYGSTIN>` | Root `<LEDGER>` | Full 15-character GST identification number. |
 | **GSTIN / UIN** | `<GSTIN>` | `<LEDGSTREGDETAILS.LIST>` | Populates the **GSTIN/UIN** field under Tax Registration Details. |
-| **Registration Type** | `<GSTREGISTRATIONTYPE>` | Root `<LEDGER>` & `<LEDGSTREGDETAILS.LIST>` | Set to `Regular` if GSTIN is present, otherwise `Unregistered`. |
+| **Registration Type** | `<GSTREGISTRATIONTYPE>` | Root `<LEDGER>` & `<LEDGSTREGDETAILS.LIST>` | Set to `Regular` if GSTIN is present, otherwise `Unregistered/Consumer`. |
 | **Applicable From** | `<APPLICABLEFROM>` | Both Lists | Set to `20240401` (`01-Apr-2024`) for statutory compliance. |
 
 > [!NOTE]
@@ -88,7 +88,7 @@ When creating customer party ledgers in Tally Prime, the XML payload must popula
           <COUNTRYNAME>India</COUNTRYNAME>
           <COUNTRYOFRESIDENCE>India</COUNTRYOFRESIDENCE>
           <LEDSTATENAME>Andhra Pradesh</LEDSTATENAME>
-          <GSTREGISTRATIONTYPE>Unregistered</GSTREGISTRATIONTYPE>
+          <GSTREGISTRATIONTYPE>Unregistered/Consumer</GSTREGISTRATIONTYPE>
           <LEDMAILINGDETAILS.LIST>
             <APPLICABLEFROM>20240401</APPLICABLEFROM>
             <PINCODE></PINCODE>
@@ -98,7 +98,7 @@ When creating customer party ledgers in Tally Prime, the XML payload must popula
           </LEDMAILINGDETAILS.LIST>
           <LEDGSTREGDETAILS.LIST>
             <APPLICABLEFROM>20240401</APPLICABLEFROM>
-            <GSTREGISTRATIONTYPE>Unregistered</GSTREGISTRATIONTYPE>
+            <GSTREGISTRATIONTYPE>Unregistered/Consumer</GSTREGISTRATIONTYPE>
             <PLACEOFSUPPLY>Andhra Pradesh</PLACEOFSUPPLY>
           </LEDGSTREGDETAILS.LIST>
         </LEDGER>

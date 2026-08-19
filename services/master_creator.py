@@ -44,7 +44,7 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
         p_state_xml = escape_xml_value(p_state)
         p_gstin_xml = escape_xml_value(p_gstin)
         
-        gst_reg_type = "Regular" if p_gstin else "Unregistered"
+        gst_reg_type = "Regular" if p_gstin else "Unregistered/Consumer"
         
         gstin_node = f"<PARTYGSTIN>{p_gstin_xml}</PARTYGSTIN>" if p_gstin else ""
         state_node = f"<LEDSTATENAME>{p_state_xml}</LEDSTATENAME>" if p_state else ""

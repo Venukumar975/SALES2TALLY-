@@ -104,7 +104,7 @@ def fetch_live_party_details(company_name):
                 "name": name,
                 "state": state,
                 "country": country if country else "India",
-                "registration_type": reg_type if reg_type else ("Regular" if gstin else "Unregistered"),
+                "registration_type": reg_type if reg_type else ("Regular" if gstin else "Unregistered/Consumer"),
                 "gstin": gstin
             }
         return ledgers_map

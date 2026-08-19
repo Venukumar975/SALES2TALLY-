@@ -144,7 +144,7 @@ async function checkPartyNames() {
                             <span class="item-sub-tag">State: ${item.state || 'N/A'}</span>
                             <span class="item-sub-tag font-mono">GSTIN: ${item.gstin || 'None'}</span>
                         </div>
-                        <span class="missing-badge">${item.gstin ? 'Regular' : 'Unregistered'}</span>
+                        <span class="missing-badge">${item.gstin ? 'Regular' : 'Unregistered/Consumer'}</span>
                     `;
                     missingCardsList.appendChild(box);
                 });

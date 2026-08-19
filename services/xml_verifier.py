@@ -51,6 +51,8 @@ def audit_generated_xml_file(xml_path):
     missing_place_of_supply = 0
     missing_country = 0
     missing_reg_type = 0
+    missing_consignee_name = 0
+    missing_consignee_state = 0
     
     b2b_count = 0
     b2c_count = 0
@@ -69,12 +71,14 @@ def audit_generated_xml_file(xml_path):
         eff_dt = (v.findtext("EFFECTIVEDATE") or "").strip()
         ref_dt = (v.findtext("REFERENCEDATE") or "").strip()
         party_ledger = (v.findtext("PARTYLEDGERNAME") or "").strip()
-        party_name = (v.findtext("PARTYNAME") or "").strip()
+        party_name = (v.findtext("PARTYNAME") or v.findtext("BASICBUYERNAME") or "").strip()
         state = (v.findtext("STATENAME") or "").strip()
         pos = (v.findtext("PLACEOFSUPPLY") or "").strip()
         gstin = (v.findtext("PARTYGSTIN") or "").strip()
         country = (v.findtext("COUNTRYOFRESIDENCE") or "").strip()
         reg_type = (v.findtext("GSTREGISTRATIONTYPE") or "").strip()
+        consignee_name = (v.findtext("CONSIGNEEMAILINGNAME") or v.findtext("BASICSHIPPEDBYNAME") or "").strip()
+        consignee_state = (v.findtext("CONSIGNEESTATENAME") or "").strip()
 
         if party_ledger: unique_parties.add(party_ledger)
 
@@ -87,6 +91,8 @@ def audit_generated_xml_file(xml_path):
         if not pos: missing_place_of_supply += 1
         if not country: missing_country += 1
         if not reg_type: missing_reg_type += 1
+        if not consignee_name: missing_consignee_name += 1
+        if not consignee_state: missing_consignee_state += 1
 
         # B2B vs B2C Classification
         if gstin and len(gstin) >= 15:
@@ -161,6 +167,8 @@ def audit_generated_xml_file(xml_path):
         "missing_place_of_supply": missing_place_of_supply,
         "missing_country": missing_country,
         "missing_reg_type": missing_reg_type,
+        "missing_consignee_name": missing_consignee_name,
+        "missing_consignee_state": missing_consignee_state,
         "unbalanced_count": len(unbalanced_vouchers),
         "total_debits": round(total_file_debits, 2),
         "total_credits": round(total_file_credits, 2)
