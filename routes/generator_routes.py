@@ -18,6 +18,7 @@ def generate():
     ledger_company = data.get("ledger_company", "").strip()
     xml_company_name = data.get("xml_company_name", "").strip()
     sales_ledger_name = data.get("sales_ledger_name", "").strip()
+    sales_ledger_mappings = data.get("sales_ledger_mappings", {})
     misc_ledger_name = data.get("misc_ledger_name", "").strip()
     header_row = data.get("header_row")
     tax_ledger_mappings = data.get("tax_ledger_mappings", {})
@@ -53,7 +54,8 @@ def generate():
             header_row=header_row,
             from_date=from_date,
             to_date=to_date,
-            tax_ledger_mappings=tax_ledger_mappings
+            tax_ledger_mappings=tax_ledger_mappings,
+            sales_ledger_mappings=sales_ledger_mappings
         )
         xml_path = os.path.join(PROCESSED_FOLDER, filename)
         audit_report = audit_generated_xml_file(xml_path)

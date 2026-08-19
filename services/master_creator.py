@@ -106,6 +106,7 @@ def create_missing_ledgers_in_tally(ledger_company, parties):
       </BODY>
     </ENVELOPE>"""
     
+    # DO NOT MODIFY: Strict 1200s (20 mins) timeout required for large Tally master creation
     r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=1200)
     if r.status_code != 200:
         raise RuntimeError(f"Tally server responded with HTTP {r.status_code}")
@@ -269,6 +270,7 @@ def create_missing_stock_items_in_tally(file_path, sheet_name, mappings, header_
   </BODY>
 </ENVELOPE>"""
 
+    # DO NOT MODIFY: Strict 1200s (20 mins) timeout required for large Tally master creation
     r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=1200)
     if r.status_code != 200:
         raise RuntimeError(f"Tally server responded with HTTP {r.status_code}")

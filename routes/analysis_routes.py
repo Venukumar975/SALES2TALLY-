@@ -83,28 +83,31 @@ def detect_tax_rates():
         igst_col = mappings.get("IGST Amount")
         
         detected_keys = set()
+        product_rates_set = set()
         for _, r in df_data.iterrows():
             taxable = to_float(r.get(taxable_col, 0)) if taxable_col in df_data.columns else 0.0
             if taxable <= 0:
                 continue
                 
-            if cgst_col and cgst_col in df_data.columns:
-                c_amt = to_float(r.get(cgst_col, 0))
+            c_amt = to_float(r.get(cgst_col, 0)) if cgst_col and cgst_col in df_data.columns else 0.0
+            s_amt = to_float(r.get(sgst_col, 0)) if sgst_col and sgst_col in df_data.columns else 0.0
+            i_amt = to_float(r.get(igst_col, 0)) if igst_col and igst_col in df_data.columns else 0.0
+
+            if c_amt > 0 or s_amt > 0:
+                c_rate = int(round((c_amt / taxable) * 100)) if c_amt > 0 else 0
+                s_rate = int(round((s_amt / taxable) * 100)) if s_amt > 0 else 0
                 if c_amt > 0:
-                    rate = int(round((c_amt / taxable) * 100))
-                    detected_keys.add(f"CGST Output {rate}%")
-                    
-            if sgst_col and sgst_col in df_data.columns:
-                s_amt = to_float(r.get(sgst_col, 0))
+                    detected_keys.add(f"CGST Output {c_rate}%")
                 if s_amt > 0:
-                    rate = int(round((s_amt / taxable) * 100))
-                    detected_keys.add(f"SGST Output {rate}%")
-                    
-            if igst_col and igst_col in df_data.columns:
-                i_amt = to_float(r.get(igst_col, 0))
-                if i_amt > 0:
-                    rate = int(round((i_amt / taxable) * 100))
-                    detected_keys.add(f"IGST Output {rate}%")
+                    detected_keys.add(f"SGST Output {s_rate}%")
+                tot_rate = int(round(((c_amt + s_amt) / taxable) * 100))
+                product_rates_set.add(tot_rate)
+            elif i_amt > 0:
+                i_rate = int(round((i_amt / taxable) * 100))
+                detected_keys.add(f"IGST Output {i_rate}%")
+                product_rates_set.add(i_rate)
+            else:
+                product_rates_set.add(0)
                     
         def sort_key(k):
             m = re.search(r'(\d+)%', k)
@@ -113,7 +116,12 @@ def detect_tax_rates():
             return (tax_type, rate)
             
         sorted_keys = sorted(list(detected_keys), key=sort_key)
-        return jsonify({"success": True, "tax_keys": sorted_keys})
+        sorted_product_rates = sorted(list(product_rates_set), reverse=True)
+        return jsonify({
+            "success": True,
+            "tax_keys": sorted_keys,
+            "product_rates": sorted_product_rates
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

@@ -12,14 +12,17 @@ from utils.matching import find_matching_ledger, clean_and_resolve_state
 from services.tally_ledger_service import get_cached_ledgers, fetch_live_party_details
 from services.master_creator import escape_xml_value
 
-def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filename, ledger_company, xml_company_name, sales_ledger_name, misc_ledger_name, header_row=None, from_date=None, to_date=None, tax_ledger_mappings=None):
+def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filename, ledger_company, xml_company_name, sales_ledger_name, misc_ledger_name, header_row=None, from_date=None, to_date=None, tax_ledger_mappings=None, sales_ledger_mappings=None):
     """
     Groups multi-item sales register records by Invoice No and builds Tally Prime Import XML Vouchers.
+    Dynamically maps each item's accounting allocation (Particulars) to its matching rate-wise Sales Ledger.
     Balances debit and credit using exact commercial half-up rounding and Misc offset.
     Fetches live party metadata (State, GSTIN, Registration Type) directly from Tally Prime.
     """
     if tax_ledger_mappings is None:
         tax_ledger_mappings = {}
+    if sales_ledger_mappings is None:
+        sales_ledger_mappings = {}
         
     headers, df_data = find_headers_and_df(file_path, sheet_name, header_row=header_row)
     
@@ -81,12 +84,12 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
         party_state_clean = escape_xml_value(party_state)
         country_name = party_meta.get("country") or "India"
         country_name_clean = escape_xml_value(country_name)
+        gstin_no = party_meta.get("gstin") or ""
+        gstin_no_clean = escape_xml_value(gstin_no)
         reg_type = party_meta.get("registration_type") or ("Regular" if gstin_no else "Unregistered/Consumer")
         if reg_type.lower() == "unregistered":
             reg_type = "Unregistered/Consumer"
         reg_type_clean = escape_xml_value(reg_type)
-        gstin_no = party_meta.get("gstin") or ""
-        gstin_no_clean = escape_xml_value(gstin_no)
 
         # Place of supply matches the party's official registered / shipping state
         place_of_supply = party_state_clean
@@ -123,6 +126,30 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
             
             rate = (taxable / qty) if qty > 0 else taxable
             
+            # Determine this specific product line's total GST tax rate
+            c_amt = to_float(row.get("CGST Amount", 0))
+            s_amt = to_float(row.get("SGST Amount", 0))
+            i_amt = to_float(row.get("IGST Amount", 0))
+            
+            if taxable > 0:
+                if c_amt > 0 or s_amt > 0:
+                    item_gst_rate = int(round(((c_amt + s_amt) / taxable) * 100))
+                elif i_amt > 0:
+                    item_gst_rate = int(round((i_amt / taxable) * 100))
+                else:
+                    item_gst_rate = 0
+            else:
+                item_gst_rate = 0
+
+            # Match product line to its rate-specific Sales Ledger (e.g. 18% -> Goods Sales, 12% -> Goods Sales - 12%, 0% -> Goods Sales - Nil Rated)
+            allocated_sales_ledger = (
+                sales_ledger_mappings.get(str(item_gst_rate))
+                or sales_ledger_mappings.get(f"{item_gst_rate}%")
+                or sales_ledger_mappings.get(item_gst_rate)
+                or sales_ledger_name
+                or (f"Goods Sales - {item_gst_rate}%" if item_gst_rate > 0 else "Goods Sales - Nil Rated")
+            )
+            
             inventory_entries += f"""
             <ALLINVENTORYENTRIES.LIST>
               <STOCKITEMNAME>{prod_name}</STOCKITEMNAME>
@@ -132,7 +159,7 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
               <ACTUALQTY>{qty:.2f} {uom}</ACTUALQTY>
               <BILLEDQTY>{qty:.2f} {uom}</BILLEDQTY>
               <ACCOUNTINGALLOCATIONS.LIST>
-                <LEDGERNAME>{escape_xml_value(sales_ledger_name or 'Goods Sales')}</LEDGERNAME>
+                <LEDGERNAME>{escape_xml_value(allocated_sales_ledger)}</LEDGERNAME>
                 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
                 <AMOUNT>{taxable:.2f}</AMOUNT>
               </ACCOUNTINGALLOCATIONS.LIST>

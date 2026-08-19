@@ -96,7 +96,6 @@ async function syncTally(type) {
 }
 
 async function loadLedgersForVoucherConfig(companyName) {
-    const salesInput = document.getElementById("sales_ledger_select");
     const miscSelect = document.getElementById("misc_ledger_select");
     const xmlCompanyInput = document.getElementById("xml_company_name");
     
@@ -116,7 +115,6 @@ async function loadLedgersForVoucherConfig(companyName) {
         
         if (data.success && data.ledgers) {
             tallyLedgerList = data.ledgers;
-            let defaultSales = "";
             let defaultMisc = "";
             
             data.ledgers.forEach(ledger => {
@@ -126,18 +124,11 @@ async function loadLedgersForVoucherConfig(companyName) {
                 miscSelect.appendChild(optMisc);
                 
                 const lowerLedger = ledger.toLowerCase();
-                if (!defaultSales && lowerLedger.includes("sales") && (lowerLedger.includes("goods") || lowerLedger.includes("goods sales") || lowerLedger.includes("sales goods"))) {
-                    defaultSales = ledger;
-                } else if (!defaultSales && lowerLedger.includes("sales")) {
-                    defaultSales = ledger;
-                }
-                
                 if (!defaultMisc && (lowerLedger.includes("misc") || lowerLedger.includes("round") || lowerLedger.includes("conversion"))) {
                     defaultMisc = ledger;
                 }
             });
             
-            if (defaultSales) salesInput.value = defaultSales;
             if (defaultMisc) miscSelect.value = defaultMisc;
             
             detectAndRenderTaxRates();
@@ -152,11 +143,14 @@ async function detectAndRenderTaxRates() {
     if (!sheetSelect) return;
     const sheet = sheetSelect.value;
     const rowVal = document.getElementById("header_row").value || 1;
-    const container = document.getElementById("detected-tax-rates-container");
-    const listDiv = document.getElementById("tax-rates-mapping-list");
+    const taxContainer = document.getElementById("detected-tax-rates-container");
+    const taxListDiv = document.getElementById("tax-rates-mapping-list");
+    const salesContainer = document.getElementById("detected-sales-ledgers-container");
+    const salesListDiv = document.getElementById("sales-ledgers-mapping-list");
     
     if (!tempFileId || !sheet) {
-        if (container) container.style.display = "none";
+        if (taxContainer) taxContainer.style.display = "none";
+        if (salesContainer) salesContainer.style.display = "none";
         return;
     }
     
@@ -173,7 +167,8 @@ async function detectAndRenderTaxRates() {
     });
     
     if (!hasTaxes || !mappings["Taxable Amount"]) {
-        if (container) container.style.display = "none";
+        if (taxContainer) taxContainer.style.display = "none";
+        if (salesContainer) salesContainer.style.display = "none";
         return;
     }
     
@@ -190,11 +185,100 @@ async function detectAndRenderTaxRates() {
         });
         const data = await res.json();
         
-        if (data.success && data.tax_keys && data.tax_keys.length > 0) {
-            detectedTaxKeys = data.tax_keys;
-            container.style.display = "flex";
+        // 1. Render Product Sales Ledgers by Tax Rate
+        if (data.success && data.product_rates && data.product_rates.length > 0 && salesContainer && salesListDiv) {
+            salesContainer.style.display = "flex";
+            salesListDiv.innerHTML = "";
             
-            listDiv.innerHTML = "";
+            data.product_rates.forEach(rate => {
+                const colDiv = document.createElement("div");
+                colDiv.style.display = "flex";
+                colDiv.style.flexDirection = "column";
+                colDiv.style.gap = "6px";
+                colDiv.style.minWidth = "220px";
+                colDiv.style.flex = "1";
+                
+                const label = document.createElement("label");
+                label.style.fontSize = "0.85rem";
+                label.style.fontWeight = "600";
+                label.style.color = "var(--text-muted)";
+                label.innerText = rate > 0 ? `Product Sales Ledger (${rate}% GST):` : `Product Sales Ledger (0% / Nil Rated):`;
+                
+                const wrapper = document.createElement("div");
+                wrapper.className = "select-wrapper";
+                
+                const select = document.createElement("select");
+                select.className = "sales-rate-mapping-dropdown";
+                select.setAttribute("data-sales-rate", `${rate}`);
+                select.innerHTML = '<option value="">-- Choose Sales Ledger --</option>';
+                
+                tallyLedgerList.forEach(ledger => {
+                    const opt = document.createElement("option");
+                    opt.value = ledger;
+                    opt.innerText = ledger;
+                    select.appendChild(opt);
+                });
+                
+                // Smart auto-matching for sales ledger based on rate
+                let foundMatch = "";
+                const rateStr = `${rate}`;
+                
+                if (rate > 0) {
+                    for (let l of tallyLedgerList) {
+                        const lLower = l.toLowerCase();
+                        if (lLower.includes("sales") && (lLower.includes(`${rateStr}%`) || lLower.includes(` ${rateStr}`))) {
+                            foundMatch = l;
+                            break;
+                        }
+                    }
+                    if (!foundMatch && rate === 18) {
+                        for (let l of tallyLedgerList) {
+                            const lLower = l.toLowerCase();
+                            if (lLower === "goods sales" || lLower === "sales" || lLower === "sales account") {
+                                foundMatch = l;
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    for (let l of tallyLedgerList) {
+                        const lLower = l.toLowerCase();
+                        if (lLower.includes("sales") && (lLower.includes("nil") || lLower.includes("exempt") || lLower.includes("0%"))) {
+                            foundMatch = l;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!foundMatch) {
+                    for (let l of tallyLedgerList) {
+                        const lLower = l.toLowerCase();
+                        if (lLower.includes("sales")) {
+                            foundMatch = l;
+                            break;
+                        }
+                    }
+                }
+                
+                if (foundMatch) {
+                    select.value = foundMatch;
+                }
+                
+                wrapper.appendChild(select);
+                colDiv.appendChild(label);
+                colDiv.appendChild(wrapper);
+                salesListDiv.appendChild(colDiv);
+            });
+        } else if (salesContainer) {
+            salesContainer.style.display = "none";
+        }
+
+        // 2. Render Duties & Taxes (CGST / SGST / IGST)
+        if (data.success && data.tax_keys && data.tax_keys.length > 0 && taxContainer && taxListDiv) {
+            detectedTaxKeys = data.tax_keys;
+            taxContainer.style.display = "flex";
+            
+            taxListDiv.innerHTML = "";
             data.tax_keys.forEach(key => {
                 const colDiv = document.createElement("div");
                 colDiv.style.display = "flex";
@@ -254,13 +338,14 @@ async function detectAndRenderTaxRates() {
                 wrapper.appendChild(select);
                 colDiv.appendChild(label);
                 colDiv.appendChild(wrapper);
-                listDiv.appendChild(colDiv);
+                taxListDiv.appendChild(colDiv);
             });
-        } else {
-            if (container) container.style.display = "none";
+        } else if (taxContainer) {
+            taxContainer.style.display = "none";
         }
     } catch (err) {
-        console.error("Error detecting tax rates:", err);
-        if (container) container.style.display = "none";
+        console.error("Error detecting tax and sales rates:", err);
+        if (taxContainer) taxContainer.style.display = "none";
+        if (salesContainer) salesContainer.style.display = "none";
     }
 }

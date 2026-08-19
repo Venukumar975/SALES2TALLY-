@@ -22,17 +22,28 @@ async function generateSalesXML() {
 
     const ledgerCo = document.getElementById("tally_ledger_company_select").value;
     const xmlCompanyName = document.getElementById("xml_company_name").value.trim();
-    const salesLedger = document.getElementById("sales_ledger_select").value;
     const miscLedger = document.getElementById("misc_ledger_select").value;
 
-    if (!salesLedger) {
-        showStatus("mapping-status", null, "⚠️ Please select a Sales Ledger Account first.", "error");
-        return;
-    }
     if (!xmlCompanyName) {
         showStatus("mapping-status", null, "⚠️ Please enter the Tally Company Name for XML Import.", "error");
         return;
     }
+
+    const salesLedgerMappings = {};
+    document.querySelectorAll(".sales-rate-mapping-dropdown").forEach(dropdown => {
+        const rate = dropdown.getAttribute("data-sales-rate");
+        if (dropdown.value) {
+            salesLedgerMappings[rate] = dropdown.value;
+        }
+    });
+
+    const taxLedgerMappings = {};
+    document.querySelectorAll(".tax-rate-mapping-dropdown").forEach(dropdown => {
+        const key = dropdown.getAttribute("data-tax-key");
+        if (dropdown.value) {
+            taxLedgerMappings[key] = dropdown.value;
+        }
+    });
 
     const btn = document.getElementById("btn-generate-xml");
     btn.disabled = true;
@@ -42,14 +53,6 @@ async function generateSalesXML() {
 
     const fromDate = document.getElementById("filter-from-date").value;
     const toDate = document.getElementById("filter-to-date").value;
-
-    const taxLedgerMappings = {};
-    document.querySelectorAll(".tax-rate-mapping-dropdown").forEach(dropdown => {
-        const key = dropdown.getAttribute("data-tax-key");
-        if (dropdown.value) {
-            taxLedgerMappings[key] = dropdown.value;
-        }
-    });
 
     try {
         const res = await fetch("/generate", {
@@ -62,7 +65,7 @@ async function generateSalesXML() {
                 original_filename: originalFilename,
                 ledger_company: ledgerCo,
                 xml_company_name: xmlCompanyName,
-                sales_ledger_name: salesLedger,
+                sales_ledger_mappings: salesLedgerMappings,
                 misc_ledger_name: miscLedger,
                 from_date: fromDate,
                 to_date: toDate,

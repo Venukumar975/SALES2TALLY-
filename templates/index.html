@@ -398,16 +398,11 @@
                 <div id="ledger-config-container" class="ledger-config-section">
                     <h3 class="section-subheading">Voucher Ledger Accounts</h3>
 
-                    <div class="input-field-group">
-                        <label for="xml_company_name">Tally Company Name for XML Import</label>
-                        <input type="text" id="xml_company_name" placeholder="Enter the exact Tally company name">
-                        <span class="input-helper-text">Pre-filled from the synced company profile; written into the XML target header.</span>
-                    </div>
-                    
                     <div class="form-row-2">
                         <div class="input-field-group">
-                            <label for="sales_ledger_select">Sales Ledger Account</label>
-                            <input type="text" id="sales_ledger_select" placeholder="Enter Sales Ledger (e.g. Goods Sales)">
+                            <label for="xml_company_name">Tally Company Name for XML Import</label>
+                            <input type="text" id="xml_company_name" placeholder="Enter the exact Tally company name">
+                            <span class="input-helper-text">Pre-filled from the synced company profile; written into the XML target header.</span>
                         </div>
                         <div class="input-field-group">
                             <label for="misc_ledger_select">Misc / Round-off Ledger Account</label>
@@ -416,8 +411,16 @@
                                     <option value="">-- Choose Misc Ledger --</option>
                                 </select>
                             </div>
+                            <span class="input-helper-text">Balances rounding discrepancies between debit and credit to exact paisa.</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- DYNAMIC SALES LEDGERS MATRIX BY RATE -->
+                <div id="detected-sales-ledgers-container" class="tax-rates-section" style="display: none;">
+                    <h3 class="section-subheading">Product Sales Ledgers Mapping (By Tax Rate)</h3>
+                    <p class="section-description">Select the corresponding Tally Sales Ledger account for each detected product GST rate:</p>
+                    <div id="sales-ledgers-mapping-list" class="tax-rates-grid"></div>
                 </div>
 
                 <!-- DETECTED TAX RATES MATRIX -->

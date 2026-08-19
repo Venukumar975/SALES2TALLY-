@@ -54,7 +54,7 @@ def sync_ledgers_from_tally(company_name):
         </BODY>
     </ENVELOPE>"""
     
-    # 20 minutes timeout
+    # DO NOT MODIFY: Strict 1200s (20 mins) timeout required for Tally operations
     r = requests.post(TALLY_URL, data=ledger_xml, timeout=1200)
     if r.status_code != 200:
         raise Exception(f"Tally server responded with status {r.status_code}")
@@ -108,6 +108,7 @@ def sync_stock_from_tally(company_name):
         </BODY>
     </ENVELOPE>"""
     
+    # DO NOT MODIFY: Strict 1200s (20 mins) timeout required for Tally operations
     r = requests.post(TALLY_URL, data=stock_xml, timeout=1200)
     if r.status_code != 200:
         raise Exception(f"Tally server responded with status {r.status_code}")
