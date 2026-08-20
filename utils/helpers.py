@@ -188,3 +188,18 @@ def custom_round(val):
         return math.ceil(val_float)
     else:
         return math.floor(val_float)
+
+def round_2dec(val):
+    """
+    Standard Commercial Rounding (Round-Half-Up to 2 decimal places).
+    Matches Tally Prime statutory tax calculation.
+    """
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        val_float = float(str(val).replace(",", "").strip())
+    except Exception:
+        return 0.0
+    return math.floor(val_float * 100.0 + 0.5) / 100.0
+
+custom_round_2dec = round_2dec

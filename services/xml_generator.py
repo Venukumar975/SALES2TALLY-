@@ -6,7 +6,7 @@ from datetime import datetime
 from config import PROCESSED_FOLDER
 from utils.helpers import (
     find_headers_and_df, clean_date_cell, clean_text_cell,
-    filter_df_by_date_range, to_float, custom_round
+    filter_df_by_date_range, to_float, custom_round, round_2dec, custom_round_2dec
 )
 from utils.matching import find_matching_ledger, clean_and_resolve_state
 from services.tally_ledger_service import get_cached_ledgers, fetch_live_party_details
@@ -172,7 +172,7 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
         
         total_taxable_amount = 0.0
         total_invoice_amount = 0.0
-
+        
         for _, r in group.iterrows():
             taxable = to_float(r.get("Taxable Amount", 0))
             total_taxable_amount += taxable
@@ -185,21 +185,24 @@ def generate_tally_vouchers_xml(file_path, sheet_name, mappings, original_filena
             if cgst_amt > 0:
                 rate = int(round((cgst_amt / taxable) * 100))
                 key = f"CGST Output {rate}%"
-                invoice_cgst_by_key[key] = invoice_cgst_by_key.get(key, 0.0) + cgst_amt
+                item_cgst = custom_round_2dec(taxable * (rate / 100.0))
+                invoice_cgst_by_key[key] = invoice_cgst_by_key.get(key, 0.0) + item_cgst
                 
             sgst_amt = to_float(r.get("SGST Amount", 0))
             if sgst_amt > 0:
                 rate = int(round((sgst_amt / taxable) * 100))
                 key = f"SGST Output {rate}%"
-                invoice_sgst_by_key[key] = invoice_sgst_by_key.get(key, 0.0) + sgst_amt
+                item_sgst = custom_round_2dec(taxable * (rate / 100.0))
+                invoice_sgst_by_key[key] = invoice_sgst_by_key.get(key, 0.0) + item_sgst
                 
             igst_amt = to_float(r.get("IGST Amount", 0))
             if igst_amt > 0:
                 rate = int(round((igst_amt / taxable) * 100))
                 key = f"IGST Output {rate}%"
-                invoice_igst_by_key[key] = invoice_igst_by_key.get(key, 0.0) + igst_amt
+                item_igst = custom_round_2dec(taxable * (rate / 100.0))
+                invoice_igst_by_key[key] = invoice_igst_by_key.get(key, 0.0) + item_igst
 
-        # Compute sum of tax ledgers rounded exactly to 2 decimal places
+        # Compute sum of tax ledgers
         cgst_ledgers_total = sum(round(amt, 2) for amt in invoice_cgst_by_key.values())
         sgst_ledgers_total = sum(round(amt, 2) for amt in invoice_sgst_by_key.values())
         igst_ledgers_total = sum(round(amt, 2) for amt in invoice_igst_by_key.values())
