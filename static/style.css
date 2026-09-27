@@ -1111,6 +1111,12 @@ select:focus {
     gap: 16px;
 }
 
+.form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+}
+
 .tax-rates-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1513,6 +1519,7 @@ select:focus {
     .check-actions-bar,
     .generate-actions-bar,
     .form-row-2,
+    .form-row-3,
     .tax-rates-grid {
         grid-template-columns: 1fr;
     }
@@ -2011,3 +2018,86 @@ select:focus {
     font-size: 0.82rem !important;
     color: var(--text-muted) !important;
 }
+
+/* ==========================================================================
+   APP MODE SELECTOR TOGGLE (Item vs Accounting)
+   ========================================================================== */
+.mode-toggle-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.mode-toggle-pod {
+    display: flex;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid var(--border-card);
+    backdrop-filter: blur(12px);
+    border-radius: var(--radius-full);
+    padding: 6px;
+    gap: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 8px 24px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+}
+
+.mode-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(56, 189, 248, 0.2));
+    border: 1px solid rgba(16, 185, 129, 0.6);
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+}
+
+.mode-btn-icon {
+    font-size: 1.25rem;
+}
+
+.mode-btn-text-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.mode-btn-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.mode-btn-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.mode-btn.active .mode-btn-sub {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.badge-count {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-blue);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+

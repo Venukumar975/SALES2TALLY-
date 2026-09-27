@@ -13,6 +13,7 @@ from routes.tally_routes import tally_bp
 from routes.analysis_routes import analysis_bp
 from routes.generator_routes import generator_bp
 from routes.licensing_routes import licensing_bp
+from accounting_voucher.routes import accounting_bp
 from services.licensing import get_current_license_status, start_license_heartbeat
 
 def create_app():
@@ -32,6 +33,7 @@ def create_app():
     app.register_blueprint(tally_bp)
     app.register_blueprint(analysis_bp)
     app.register_blueprint(generator_bp)
+    app.register_blueprint(accounting_bp)
 
     @app.before_request
     def check_license_access():

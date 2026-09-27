@@ -26,6 +26,7 @@ processed/
 tally_companies/
 
 # Scratch / test scripts
+scratch/
 scratch_*.py
 scratch_*.xml
 

@@ -29,6 +29,27 @@
             </div>
         </header>
 
+        <!-- APP MODE SELECTOR TOGGLE (Item Invoice vs Accounting Invoice) -->
+        <div class="mode-toggle-container">
+            <div class="mode-toggle-pod">
+                <button type="button" class="mode-btn active" id="tab-item-mode" onclick="switchAppMode('item')">
+                    <span class="mode-btn-icon">📦</span>
+                    <div class="mode-btn-text-group">
+                        <span class="mode-btn-title">Item Invoice Mode</span>
+                        <span class="mode-btn-sub">Stock &amp; Inventory</span>
+                    </div>
+                </button>
+                <button type="button" class="mode-btn" id="tab-accounting-mode" onclick="switchAppMode('accounting')">
+                    <span class="mode-btn-icon">📑</span>
+                    <div class="mode-btn-text-group">
+                        <span class="mode-btn-title">Accounting Invoice Mode</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- SECTION: ITEM INVOICE (EXISTING INVENTORY WORKFLOW) -->
+        <div id="section-item-invoice">
         <!-- STICKY FROSTED GLASS SHIELD (FLUSH AT TOP 0, BLURS ALL SCROLLING CONTENT) -->
         <div class="sticky-glass-shield">
             <nav class="workflow-stepper" id="main-stepper-bar" aria-label="Workflow Steps">
@@ -479,7 +500,11 @@
                 </div>
             </div>
         </section>
-    </div>
+        </div><!-- END #section-item-invoice -->
+
+        <!-- SECTION: ACCOUNTING INVOICE (SPARES HSN WORKFLOW) -->
+        {% include 'accounting_section.html' %}
+    </div><!-- END .container -->
 
     <!-- MODAL POPUPS (PERFECTLY CENTERED IN VIEWPORT) -->
     <!-- Modal for Sync Ledgers -->
@@ -594,5 +619,6 @@
     <script src="{{ url_for('static', filename='js/verification.js') }}?v=17.0"></script>
     <script src="{{ url_for('static', filename='js/generator.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', filename='js/accounting.js') }}?v=5.0"></script>
 </body>
 </html>
