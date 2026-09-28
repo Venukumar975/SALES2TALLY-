@@ -57,7 +57,7 @@ print("[SUCCESS] PyArmor Obfuscation Completed Successfully.")
 # STEP 3: RUN PYINSTALLER PACKAGING ON OBFUSCATED SOURCE
 print("\n[3/4] Packaging Desktop Executable with PyInstaller (--noconsole, --onedir)...")
 
-# Strictly required modules only - NO tensorflow, keras, torch, scipy, matplotlib
+# Strictly required production modules used by SALES2TALLY
 required_modules = [
     "flask",
     "werkzeug",
@@ -79,19 +79,49 @@ required_modules = [
     "charset_normalizer"
 ]
 
-# Explicitly exclude unnecessary and bulky ML/scientific packages
+# Explicitly exclude unnecessary and bulky ML, cloud, GUI, and database packages
 excluded_modules = [
+    # Machine learning / AI / scientific packages
+    "sklearn",
+    "scipy",
+    "matplotlib",
     "tensorflow",
     "keras",
     "torch",
     "torchvision",
     "torchaudio",
-    "scipy",
-    "matplotlib",
     "IPython",
     "jupyter",
     "notebook",
-    "tensorboard"
+    "tensorboard",
+
+    # Cloud storage & AWS SDKs
+    "boto3",
+    "botocore",
+    "s3fs",
+    "fsspec",
+
+    # Database drivers & ORMs
+    "psycopg2",
+    "psycopg2_binary",
+    "sqlalchemy",
+
+    # GUI toolkits (pywebview uses native Windows WebView2 Edge Chromium)
+    "tkinter",
+    "_tkinter",
+    "tcl",
+    "tk",
+    "PIL",
+    "Pillow",
+
+    # Unneeded parsers, networking & test suites
+    "zmq",
+    "pyzmq",
+    "lxml",
+    "pytest",
+    "unittest",
+    "pandas.tests",
+    "numpy.tests"
 ]
 
 pyinstaller_cmd = [

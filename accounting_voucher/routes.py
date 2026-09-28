@@ -19,14 +19,13 @@ accounting_bp = Blueprint("accounting_bp", __name__)
 
 @accounting_bp.route("/api/accounting/saved-companies", methods=["GET"])
 def api_get_saved_companies():
-    """Retrieve saved companies in Accounting Invoice Mode cache plus open companies in Tally."""
+    """Retrieve saved companies in Accounting Invoice Mode cache without calling Tally."""
     try:
         saved = get_accounting_saved_companies()
-        open_cos = get_tally_open_companies()
         return jsonify({
             "success": True,
             "companies": saved,
-            "open_companies": open_cos
+            "open_companies": []
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

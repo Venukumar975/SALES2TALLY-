@@ -117,8 +117,8 @@ def get_tally_open_companies():
         </BODY>
     </ENVELOPE>"""
     try:
-        # 20-minute timeout for Tally requests
-        r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=1200)
+        # Fast 3s connect timeout so it never hangs if Tally is closed
+        r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=(3, 5))
         if r.status_code != 200:
             return []
         root = ET.fromstring(clean_tally_xml(r.content))
@@ -177,8 +177,8 @@ def sync_accounting_ledgers_from_tally(company_name):
       </BODY>
     </ENVELOPE>"""
 
-    # 20-minute timeout for Tally large ledger database retrieval
-    r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=1200)
+    # 3s connect timeout, 20-minute read timeout for large ledger database retrieval
+    r = requests.post(TALLY_URL, data=envelope.encode("utf-8"), timeout=(3, 1200))
     if r.status_code != 200:
         raise RuntimeError(f"Tally server returned status {r.status_code}")
 

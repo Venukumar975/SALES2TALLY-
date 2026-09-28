@@ -82,7 +82,7 @@ def start_flask(port):
     """Run Flask inside background thread using Werkzeug Server."""
     try:
         _log_app(f"Werkzeug HTTP server starting on http://127.0.0.1:{port}...")
-        server = make_server("127.0.0.1", port, app)
+        server = make_server("127.0.0.1", port, app, threaded=True)
         server.serve_forever()
     except Exception as e:
         _log_app(f"Flask server error: {e}", level="ERROR")

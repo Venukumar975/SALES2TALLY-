@@ -157,15 +157,12 @@ async function loadAcctSavedCompanies() {
                 });
             }
 
-            // Restore selection or select first saved company
-            if (curVal && curVal !== "__NEW__" && Array.from(select.options).some(o => o.value === curVal)) {
-                select.value = curVal;
-                if (!AccountingState.availableLedgers || AccountingState.availableLedgers.length === 0) {
-                    await loadAcctCompanyLedgers(curVal);
-                }
-            } else if (data.companies && data.companies.length > 0) {
-                select.value = data.companies[0].company_name;
-                await loadAcctCompanyLedgers(data.companies[0].company_name);
+            // Keep default "-- Select Saved Company --" on fresh load.
+            // NEVER auto-load any company ledgers unless the user manually selects from the dropdown.
+            if (AccountingState.tallyCompany && Array.from(select.options).some(o => o.value === AccountingState.tallyCompany)) {
+                select.value = AccountingState.tallyCompany;
+            } else {
+                select.value = "";
             }
         }
     } catch (e) {
@@ -342,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    loadAcctSavedCompanies();
+    // Do not load any companies on DOMContentLoaded; only load dropdown when user switches to Accounting mode
 });
 
 function resetAcctFile() {

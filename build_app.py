@@ -29,7 +29,7 @@ pyarmor_cmd = [
     PYTHON_EXE, "-m", "pyarmor.cli", "gen",
     "-O", "dist_obf",
     "-r",
-    "app.py", "config.py", "routes", "services", "utils"
+    "app.py", "config.py", "routes", "services", "utils", "accounting_voucher"
 ]
 result = subprocess.run(pyarmor_cmd, cwd=BASE_DIR)
 if result.returncode != 0:
@@ -40,7 +40,22 @@ print("[SUCCESS] PyArmor Obfuscation Completed Successfully.")
 # Step 3: Run PyInstaller Packaging on Obfuscated Source
 print("\n[3/4] Packaging Desktop Executable with PyInstaller (--noconsole)...")
 
-# PyInstaller command with complete module collection
+# Strictly required production modules used by SALES2TALLY
+required_modules = [
+    "flask", "werkzeug", "jinja2", "itsdangerous", "click", "blinker",
+    "markupsafe", "webview", "clr_loader", "pythonnet", "openpyxl",
+    "xlsxwriter", "pandas", "numpy", "requests", "urllib3", "certifi",
+    "charset_normalizer"
+]
+
+excluded_modules = [
+    "sklearn", "scipy", "matplotlib", "tensorflow", "keras", "torch",
+    "torchvision", "torchaudio", "IPython", "jupyter", "notebook", "tensorboard",
+    "boto3", "botocore", "s3fs", "fsspec", "psycopg2", "psycopg2_binary",
+    "sqlalchemy", "tkinter", "_tkinter", "tcl", "tk", "PIL", "Pillow",
+    "zmq", "pyzmq", "lxml", "pytest", "unittest", "pandas.tests", "numpy.tests"
+]
+
 pyinstaller_cmd = [
     PYTHON_EXE, "-m", "PyInstaller",
     "--noconfirm",
@@ -51,29 +66,16 @@ pyinstaller_cmd = [
     "--add-data", f"{os.path.join(BASE_DIR, 'templates')};templates",
     "--add-data", f"{os.path.join(BASE_DIR, 'static')};static",
     "--add-data", f"{os.path.join(BASE_DIR, 'dist_obf')};.",
-    # Include search paths for PyArmor runtime and obfuscated modules
     "--paths", os.path.join(BASE_DIR, "dist_obf"),
-    # Collect all dependencies, binaries, data, and submodules
-    "--collect-all", "flask",
-    "--collect-all", "werkzeug",
-    "--collect-all", "jinja2",
-    "--collect-all", "itsdangerous",
-    "--collect-all", "click",
-    "--collect-all", "blinker",
-    "--collect-all", "markupsafe",
-    "--collect-all", "webview",
-    "--collect-all", "clr_loader",
-    "--collect-all", "pythonnet",
-    "--collect-all", "openpyxl",
-    "--collect-all", "xlsxwriter",
-    "--collect-all", "pandas",
-    "--collect-all", "numpy",
-    "--collect-all", "requests",
-    "--collect-all", "urllib3",
-    "--collect-all", "certifi",
-    "--collect-all", "charset_normalizer",
-    os.path.join(BASE_DIR, "run_desktop.py")
 ]
+
+for mod in required_modules:
+    pyinstaller_cmd.extend(["--collect-all", mod])
+
+for ex in excluded_modules:
+    pyinstaller_cmd.extend(["--exclude-module", ex])
+
+pyinstaller_cmd.append(os.path.join(BASE_DIR, "run_desktop.py"))
 
 result = subprocess.run(pyinstaller_cmd, cwd=BASE_DIR)
 if result.returncode != 0:
