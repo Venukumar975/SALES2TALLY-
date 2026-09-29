@@ -32,6 +32,27 @@ def custom_round_2dec(val):
     sign = 1 if f >= 0 else -1
     return sign * (math.floor(abs(f) * 100.0 + 0.5) / 100.0)
 
+def to_rate_float(val):
+    """Safely converts cell number to float."""
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def format_rate_str(rate):
+    """Returns '9' for 9.0/9, and '2.5' for 2.5/2.50."""
+    if rate is None:
+        return "0"
+    try:
+        r = float(rate)
+    except (ValueError, TypeError):
+        return "0"
+    if r.is_integer():
+        return str(int(r))
+    return str(r)
+
 def parse_date_to_tally(val):
     """Parses date cell into YYYYMMDD string format."""
     if pd.isna(val) or val is None:
@@ -172,14 +193,15 @@ def generate_accounting_vouchers_xml(
             price = float(str(row.get(col_price, 0)).replace(",", "")) if pd.notna(row.get(col_price)) else 0.0
 
             # Determine statutory tax rates directly from rate columns
-            c_pct = float(str(row.get(col_cgst_pct, 0)).replace(",", "")) if col_cgst_pct and col_cgst_pct in grp.columns and pd.notna(row.get(col_cgst_pct)) else 0.0
-            s_pct = float(str(row.get(col_sgst_pct, 0)).replace(",", "")) if col_sgst_pct and col_sgst_pct in grp.columns and pd.notna(row.get(col_sgst_pct)) else 0.0
-            i_pct = float(str(row.get(col_igst_pct, 0)).replace(",", "")) if col_igst_pct and col_igst_pct in grp.columns and pd.notna(row.get(col_igst_pct)) else 0.0
-
-            c_rate = int(round(c_pct)) if c_pct > 0 else 0
-            s_rate = int(round(s_pct)) if s_pct > 0 else 0
-            i_rate = int(round(i_pct)) if i_pct > 0 else 0
+            c_rate = to_rate_float(row.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in grp.columns else 0.0
+            s_rate = to_rate_float(row.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in grp.columns else 0.0
+            i_rate = to_rate_float(row.get(col_igst_pct)) if col_igst_pct and col_igst_pct in grp.columns else 0.0
             tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+
+            c_rate_str = format_rate_str(c_rate)
+            s_rate_str = format_rate_str(s_rate)
+            i_rate_str = format_rate_str(i_rate)
+            tot_rate_str = format_rate_str(tot_rate)
 
             # Mathematical commercial tax calculation (Rate applied to Selling Price)
             c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
@@ -198,7 +220,7 @@ def generate_accounting_vouchers_xml(
             global_igst += i_amt
 
             # HSN key
-            hsn_key = f"{raw_hsn}_{tot_rate}"
+            hsn_key = f"{raw_hsn}_{tot_rate_str}"
             hsn_amounts[hsn_key] = hsn_amounts.get(hsn_key, 0.0) + price
 
             if raw_hsn not in global_hsn_stats:
@@ -208,21 +230,21 @@ def generate_accounting_vouchers_xml(
 
             # Tax keys - only populate if rate > 0
             if c_rate > 0 and c_amt > 0:
-                t_key = f"Cgst {c_rate}% Output"
+                t_key = f"Cgst {c_rate_str}% Output"
                 cgst_amounts[t_key] = cgst_amounts.get(t_key, 0.0) + c_amt
-                k_tax = ("CGST", f"{c_rate}%")
+                k_tax = ("CGST", f"{c_rate_str}%")
                 global_tax_stats[k_tax] = global_tax_stats.get(k_tax, 0.0) + c_amt
 
             if s_rate > 0 and s_amt > 0:
-                t_key = f"Sgst {s_rate}% Output"
+                t_key = f"Sgst {s_rate_str}% Output"
                 sgst_amounts[t_key] = sgst_amounts.get(t_key, 0.0) + s_amt
-                k_tax = ("SGST", f"{s_rate}%")
+                k_tax = ("SGST", f"{s_rate_str}%")
                 global_tax_stats[k_tax] = global_tax_stats.get(k_tax, 0.0) + s_amt
 
             if i_rate > 0 and i_amt > 0:
-                t_key = f"Igst {i_rate}% Output"
+                t_key = f"Igst {i_rate_str}% Output"
                 igst_amounts[t_key] = igst_amounts.get(t_key, 0.0) + i_amt
-                k_tax = ("IGST", f"{i_rate}%")
+                k_tax = ("IGST", f"{i_rate_str}%")
                 global_tax_stats[k_tax] = global_tax_stats.get(k_tax, 0.0) + i_amt
 
         # 2. Credits: HSN Spares Ledgers
@@ -232,7 +254,7 @@ def generate_accounting_vouchers_xml(
         for hsn_key, price_sum in hsn_amounts.items():
             if price_sum <= 0:
                 continue
-            parts = hsn_key.split("_")
+            parts = hsn_key.rsplit("_", 1)
             hsn_code, rate = parts[0], parts[1]
             default_target = f"Gst Spares {rate}%-{hsn_code}"
             ledger_name = hsn_ledger_mappings.get(hsn_key) or hsn_ledger_mappings.get(default_target) or default_target

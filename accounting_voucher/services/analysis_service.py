@@ -14,6 +14,27 @@ def custom_round_2dec(val):
     sign = 1 if f >= 0 else -1
     return sign * (math.floor(abs(f) * 100.0 + 0.5) / 100.0)
 
+def to_rate_float(val):
+    """Safely converts cell number to float."""
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def format_rate_str(rate):
+    """Returns '9' for 9.0/9, and '2.5' for 2.5/2.50."""
+    if rate is None:
+        return "0"
+    try:
+        r = float(rate)
+    except (ValueError, TypeError):
+        return "0"
+    if r.is_integer():
+        return str(int(r))
+    return str(r)
+
 def parse_date_to_comparable(val):
     if val is None or pd.isna(val):
         return None
@@ -258,14 +279,15 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
         total_selling_price += price
         
         # Determine tax rates directly from mapped rate columns
-        c_pct = to_float(row.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
-        s_pct = to_float(row.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
-        i_pct = to_float(row.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
-        
-        c_rate = int(round(c_pct)) if c_pct > 0 else 0
-        s_rate = int(round(s_pct)) if s_pct > 0 else 0
-        i_rate = int(round(i_pct)) if i_pct > 0 else 0
+        c_rate = to_rate_float(row.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
+        s_rate = to_rate_float(row.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
+        i_rate = to_rate_float(row.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
         tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+
+        c_rate_str = format_rate_str(c_rate)
+        s_rate_str = format_rate_str(s_rate)
+        i_rate_str = format_rate_str(i_rate)
+        tot_rate_str = format_rate_str(tot_rate)
         
         # Calculate statutory commercial tax amounts mathematically
         c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
@@ -277,24 +299,24 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
         total_igst += i_amt
             
         if c_rate > 0:
-            k = f"Cgst {c_rate}% Output"
+            k = f"Cgst {c_rate_str}% Output"
             tax_keys.add(k)
             tax_totals[k] = tax_totals.get(k, 0.0) + c_amt
         if s_rate > 0:
-            k = f"Sgst {s_rate}% Output"
+            k = f"Sgst {s_rate_str}% Output"
             tax_keys.add(k)
             tax_totals[k] = tax_totals.get(k, 0.0) + s_amt
         if i_rate > 0:
-            k = f"Igst {i_rate}% Output"
+            k = f"Igst {i_rate_str}% Output"
             tax_keys.add(k)
             tax_totals[k] = tax_totals.get(k, 0.0) + i_amt
             
-        key = (raw_hsn, tot_rate)
+        key = (raw_hsn, tot_rate_str)
         if key not in hsn_rate_map:
             hsn_rate_map[key] = {
                 "hsn_code": raw_hsn,
-                "gst_rate": tot_rate,
-                "target_ledger": f"Gst Spares {tot_rate}%-{raw_hsn}",
+                "gst_rate": tot_rate_str,
+                "target_ledger": f"Gst Spares {tot_rate_str}%-{raw_hsn}",
                 "rows_count": 0,
                 "total_price": 0.0
             }
@@ -332,8 +354,8 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
     for tax_key in sorted(list(tax_keys)):
         matched = best_match_ledger(tax_key, available_ledgers)
         if not matched:
-            # Try alternate formats like "Cgst 9%", "CGST Output 9%", etc.
-            m = re.match(r'(Cgst|Sgst|Igst)\s*(\d+)%\s*Output', tax_key, re.IGNORECASE)
+            # Try alternate formats like "Cgst 9%", "CGST Output 9%", "Cgst 2.5%", etc.
+            m = re.match(r'(Cgst|Sgst|Igst)\s*(\d+(?:\.\d+)?)%\s*Output', tax_key, re.IGNORECASE)
             if m:
                 t_type, t_rate = m.group(1), m.group(2)
                 for cand in [f"{t_type} {t_rate}%", f"{t_type} {t_rate}", f"{t_type} Output {t_rate}%"]:

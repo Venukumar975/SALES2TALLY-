@@ -33,6 +33,27 @@ def custom_round_2dec(val):
     sign = 1 if f >= 0 else -1
     return sign * (math.floor(abs(f) * 100.0 + 0.5) / 100.0)
 
+def to_rate_float(val):
+    """Safely converts cell number to float."""
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def format_rate_str(rate):
+    """Returns '9' for 9.0/9, and '2.5' for 2.5/2.50."""
+    if rate is None:
+        return "0"
+    try:
+        r = float(rate)
+    except (ValueError, TypeError):
+        return "0"
+    if r.is_integer():
+        return str(int(r))
+    return str(r)
+
 def generate_accounting_formatted_excel(
     file_path,
     sheet_name=0,
@@ -101,13 +122,9 @@ def generate_accounting_formatted_excel(
 
         for _, r in grp.iterrows():
             price = to_float(r.get(col_price))
-            c_pct = to_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in grp.columns else 0.0
-            s_pct = to_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in grp.columns else 0.0
-            i_pct = to_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in grp.columns else 0.0
-
-            c_rate = int(round(c_pct)) if c_pct > 0 else 0
-            s_rate = int(round(s_pct)) if s_pct > 0 else 0
-            i_rate = int(round(i_pct)) if i_pct > 0 else 0
+            c_rate = to_rate_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in grp.columns else 0.0
+            s_rate = to_rate_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in grp.columns else 0.0
+            i_rate = to_rate_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in grp.columns else 0.0
 
             c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
             s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
@@ -141,21 +158,19 @@ def generate_accounting_formatted_excel(
             raw_hsn = raw_hsn[:-2]
 
         price = to_float(r.get(col_price))
-        c_pct = to_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
-        s_pct = to_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
-        i_pct = to_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
-
-        c_rate = int(round(c_pct)) if c_pct > 0 else 0
-        s_rate = int(round(s_pct)) if s_pct > 0 else 0
-        i_rate = int(round(i_pct)) if i_pct > 0 else 0
+        c_rate = to_rate_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
+        s_rate = to_rate_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
+        i_rate = to_rate_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
         tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+
+        tot_rate_str = format_rate_str(tot_rate)
 
         c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
         s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
         i_amt = custom_round_2dec(price * (i_rate / 100.0)) if i_rate > 0 else 0.0
 
-        hsn_key = f"{raw_hsn}_{tot_rate}"
-        default_target = f"Gst Spares {tot_rate}%-{raw_hsn}"
+        hsn_key = f"{raw_hsn}_{tot_rate_str}"
+        default_target = f"Gst Spares {tot_rate_str}%-{raw_hsn}"
         spares_ledger = hsn_ledger_mappings.get(hsn_key) or hsn_ledger_mappings.get(default_target) or default_target
 
         line_total = round(price + c_amt + s_amt + i_amt, 2)
