@@ -1,122 +1,319 @@
-# Sales & Purchase Registers Automation Suite - Codebase & Architecture Guide
+# SALES2TALLY — Enterprise Sales & Purchase Registers Automation Suite
+
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Framework-Flask%203.1-black.svg)](https://flask.palletsprojects.com/)
+[![Tally Prime](https://img.shields.io/badge/Tally%20Prime-Port%209000-green.svg)](https://tallysolutions.com/)
+[![Architecture](https://img.shields.io/badge/Architecture-Dual--Mode%20Sales-orange.svg)]()
+[![Precision](https://img.shields.io/badge/Precision-₹0.00%20Zero--Difference-success.svg)]()
+
+**SALES2TALLY** is an enterprise-grade automation platform designed for chartered accountants, tax consultants, automobile dealerships, and service centers. It converts complex external sales and purchase spreadsheets (`.xlsx`, `.xls`) into fully validated, paisa-balanced **Tally Prime XML vouchers** and formatted audit summary workbooks.
+
+---
 
 ## Table of Contents
-1. [Overview & Modular Architecture](#overview--modular-architecture)
-2. [Directory & File Organization](#directory--file-organization)
-3. [Modules Breakdown](#modules-breakdown)
-   - [Core Configuration & Entry Point](#core-configuration--entry-point)
-   - [Utils Package (`utils/`)](#utils-package-utils)
-   - [Services Package (`services/`)](#services-package-services)
-   - [Routes Package (`routes/`)](#routes-package-routes)
-   - [Frontend Architecture (`templates/` & `static/js/`)](#frontend-architecture-templates--staticjs)
-4. [Backend API Reference](#backend-api-reference)
-5. [Tally Prime XML Integration Protocol & Commercial Rounding](#tally-prime-xml-integration-protocol--commercial-rounding)
+1. [Core Sales Modes Overview](#core-sales-modes-overview)
+2. [Mode Comparison: Item Invoice vs. Accounting Invoice](#mode-comparison-item-invoice-vs-accounting-invoice)
+3. [Architecture & Workflow Diagrams](#architecture--workflow-diagrams)
+4. [Mode 1: Item Invoice Workflow (Inventory-Driven)](#mode-1-item-invoice-workflow-inventory-driven)
+5. [Mode 2: Accounting Invoice Workflow (HSN Spares & Services)](#mode-2-accounting-invoice-workflow-hsn-spares--services)
+6. [Statutory Tax Engine & Decimal Rate Support](#statutory-tax-engine--decimal-rate-support)
+7. [Paisa-Accurate Round-Off Engine (Misc Round Up / Down / Net)](#paisa-accurate-round-off-engine)
+8. [Strict Ledger Validation & Tally Safeguards](#strict-ledger-validation--tally-safeguards)
+9. [Project Directory Structure](#project-directory-structure)
+10. [Build & Packaging Pipeline](#build--packaging-pipeline)
 
 ---
 
-## Overview & Modular Architecture
+## Core Sales Modes Overview
 
-The **Sales & Purchase Registers Automation Suite** transforms external sales & purchase register spreadsheets (`.xlsx`, `.xls`) into **Tally Prime** XML Vouchers and formatted Excel summaries.
+SALES2TALLY provides two dedicated, isolated processing pipelines designed to address distinct commercial accounting requirements in Tally Prime:
 
-The codebase is fully modularized with clean isolation across configuration, utilities, external services, Flask blueprints, and client-side JavaScript components.
-
+```mermaid
+flowchart TD
+    ExcelInput["Client Excel Registers (.xlsx / .xls)"] --> ModeSplitter{"Processing Mode Selection"}
+    
+    ModeSplitter -->|"Inventory / Trade Sales"| ItemMode["Mode 1: Item Invoice Mode"]
+    ModeSplitter -->|"Spares & Workshop Registers"| AcctMode["Mode 2: Accounting Invoice Mode"]
+    
+    ItemMode --> ItemProcess["Track Stock Items, Quantities, Rates, Sundry Debtors"]
+    AcctMode --> AcctProcess["Aggregate by HSN & Dynamic GST Tax Rates (₹0.00 Diff)"]
+    
+    ItemProcess --> TallyXML1["Tally XML: INVENTORYENTRIES.LIST"]
+    AcctProcess --> TallyXML2["Tally XML: LEDGERENTRIES.LIST"]
+    
+    TallyXML1 --> TallyPrime["Tally Prime (Import / HTTP Port 9000)"]
+    TallyXML2 --> TallyPrime
 ```
+
+---
+
+## Mode Comparison: Item Invoice vs. Accounting Invoice
+
+| Feature / Dimension | Mode 1: Item Invoice Mode | Mode 2: Accounting Invoice Mode |
+| :--- | :--- | :--- |
+| **Primary Target** | Dealership vehicle sales, trading goods, retail items | Spares registers, workshop job cards, service billing |
+| **Inventory Tracking** | **Yes** — tracks Stock Item names, quantities, units, rates | **No** — pure financial accounting without item masters |
+| **Voucher Aggregation** | Grouped by Invoice No with item-by-item breakdown | Grouped by Invoice No, aggregated by **HSN Code + GST Rate** |
+| **Tally XML Structure** | `<INVENTORYENTRIES.LIST>` with `<ACCOUNTINGALLOCATIONS.LIST>` | `<LEDGERENTRIES.LIST>` directly credited to Spares Ledgers |
+| **Tally Persisted View** | `Invoice Voucher View` / `Accounting Voucher View` | `Invoice Voucher View` |
+| **Tax Calculation** | Extracted from row columns or mapped tax percentages | Statutory formula: `Selling Price * (Rate / 100.0)` |
+| **Decimal Tax Rates** | Whole numbers (`5%`, `12%`, `18%`, `28%`) | **Full Floating-Point Support** (`2.5%`, `1.5%`, `0.75%`, `0.25%`, `9.0%`) |
+| **Spares Ledger Pattern** | Standard Sales account (e.g. `Sales Account`) | Dynamic Pattern: `Gst Spares {CombinedRate}%-{HSN}` |
+| **Master Creation** | Auto-creates missing Stock Items and Sundry Debtors in Tally | Maps to existing Tally Spares & Tax accounts |
+| **Validation Safety** | Party & stock item verification reports | **Strict Pre-XML Modal**: blocks export if any mapper is missing |
+| **Misc Offset Tracking** | Single net round-off entry | **3-Row Breakdown**: Misc Round Up (+), Down (-), and Net Misc |
+
+---
+
+## Architecture & Workflow Diagrams
+
+### End-to-End Processing Architecture
+
+```mermaid
+flowchart LR
+    subgraph Ingestion ["1. INGESTION & PARSING"]
+        A1["Excel File Upload"] --> A2["Smart Header Auto-Detection"]
+        A2 --> A3["Date Range Slicing & Cleaning"]
+    end
+
+    subgraph Sync ["2. TALLY LIVE SYNC"]
+        B1["Port 9000 Connection"] --> B2["Export Company Ledgers"]
+        B2 --> B3["Auto-Casing & Local Disk Cache"]
+    end
+
+    subgraph Mapping ["3. STATUTORY MAPPING"]
+        C1["Fuzzy Party Matcher"]
+        C2["HSN Rate Extractor"]
+        C3["Duties & Taxes Matcher"]
+    end
+
+    subgraph Validation ["4. VERIFICATION & AUDIT"]
+        D1["Paisa Reconciliation Engine"]
+        D2["Strict Unmapped Block Modal"]
+    end
+
+    subgraph Export ["5. EXPORT & ARTIFACTS"]
+        E1["Tally XML with SVCURRENTCOMPANY"]
+        E2["2-Sheet Formatted Excel Summary"]
+    end
+
+    Ingestion --> Mapping
+    Sync --> Mapping
+    Mapping --> Validation
+    Validation --> Export
+```
+
+---
+
+## Mode 1: Item Invoice Workflow (Inventory-Driven)
+
+Mode 1 is designed for sales operations where tracking physical inventory quantities, units of measurement, and item descriptions is required.
+
+```mermaid
+flowchart TD
+    U1["Upload Sales Excel"] --> U2["Map Columns (Inv, Date, Party, Item, Qty, Rate, Tax)"]
+    U2 --> U3["Sync Tally Prime (Fetch Ledgers & Stock Items)"]
+    U3 --> U4{"Verify Masters in Tally"}
+    
+    U4 -->|"Missing Parties or Items"| U5["1-Click Tally Master Creator (All Masters XML)"]
+    U5 --> U6["Masters Created in Tally"]
+    U6 --> U7["Generate Item Sales XML"]
+    U4 -->|"All Masters Exist"| U7
+    
+    U7 --> U8["Tally XML with INVENTORYENTRIES.LIST"]
+    U7 --> U9["Audit Excel Workbook"]
+```
+
+### Key Capabilities in Item Invoice Mode:
+- **Inventory Entries Hierarchy:** Wraps each physical product in `<INVENTORYENTRIES.LIST>` containing `<STOCKITEMNAME>`, `<RATE>`, `<ACTUALQTY>`, and `<BILLEDQTY>`.
+- **Accounting Allocations:** Sub-allocates each stock item to designated sales and tax accounts via `<ACCOUNTINGALLOCATIONS.LIST>`.
+- **Fuzzy Party Matching:** Matches raw customer strings against Tally Sundry Debtors using normalized tokenized Jaccard similarity ($\ge 0.60$).
+- **One-Click Master Creator:** Generates and executes Tally `All Masters` XML envelopes to instantly create missing Sundry Debtors and Stock Items directly in Tally Prime.
+
+---
+
+## Mode 2: Accounting Invoice Workflow (HSN Spares & Services)
+
+Mode 2 is designed for automotive service centers, spare parts registers, and workshop billing where thousands of line items must be booked directly to statutory HSN accounts without maintaining individual stock quantities.
+
+```mermaid
+flowchart TD
+    A1["Upload Spares Excel"] --> A2["Map Headers (Inv, Date, HSN, Taxable Price, CGST%, SGST%, IGST%)"]
+    A2 --> A3["Sync Tally Ledgers (Auto-Selects Exact Case)"]
+    A3 --> A4["Analyze Sheet & Auto-Group (HSN + Tax Rate)"]
+    
+    A4 --> A5["Calculate Statutory Taxes: Price * (Rate / 100)"]
+    A5 --> A6["Reconciliation Check: Debits == Credits (₹0.00 Diff)"]
+    
+    A6 --> A7{"Pre-XML Validation Check"}
+    A7 -->|"Any Mapper Missing"| A8["BLOCK & Pop Up Unmapped Warning Modal"]
+    A8 -->|"User Maps Missing Ledgers"| A7
+    
+    A7 -->|"All Mappers 100% Complete"| A9["Export Accounting Vouchers XML"]
+    A9 --> A10["2-Sheet Formatted Accounting Summary Excel"]
+```
+
+### Key Capabilities in Accounting Invoice Mode:
+- **HSN Spares Aggregation:** Combines multiple line items sharing the same HSN code and total tax rate into a single statutory credit entry (e.g. `Gst Spares 18%-87141090`).
+- **Zero Inventory Master Bloat:** Creates clean accounting vouchers without polluting Tally's item master list with single-use part numbers.
+- **Invoice Voucher View:** Enforces `<PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>` and `<LEDGERENTRIES.LIST>` to ensure statutory GST compliance and clean display in Tally.
+
+---
+
+## Statutory Tax Engine & Decimal Rate Support
+
+In commercial dealership registers, taxes can contain pure integers (`9%`, `14%`), float representations of whole numbers (`9.0`, `18.0`), and genuine decimal tax rates (`2.5%`, `1.5%`, `0.75%`, `0.25%`).
+
+SALES2TALLY uses a specialized statutory tax engine:
+
+```python
+def to_rate_float(val):
+    """Safely converts numeric cell values to float without truncation."""
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+def format_rate_str(rate):
+    """
+    Formats whole-number floats cleanly (e.g. 9.0 -> '9', 18.0 -> '18')
+    while preserving true floating points (e.g. 2.5 -> '2.5', 0.25 -> '0.25').
+    """
+    if rate is None:
+        return "0"
+    r = float(rate)
+    if r.is_integer():
+        return str(int(r))
+    return str(r)
+```
+
+### Supported Combinations Matrix:
+- **Different Integers:** `CGST 9%` + `SGST 14%` $\rightarrow$ Spares: **`23%`** (`Gst Spares 23%-{HSN}`)
+- **Integer + Decimal:** `CGST 9%` + `SGST 2.5%` $\rightarrow$ Spares: **`11.5%`** (`Gst Spares 11.5%-{HSN}`)
+- **Different Decimals:** `CGST 0.75%` + `SGST 1.5%` $\rightarrow$ Spares: **`2.25%`** (`Gst Spares 2.25%-{HSN}`)
+- **Decimals Summing to Whole Number:** `CGST 2.5%` + `SGST 2.5%` = `5.0%` $\rightarrow$ Clean whole number: **`5%`** (`Gst Spares 5%-{HSN}`)
+- **Float Whole Numbers:** `CGST 9.0%` + `SGST 6.0%` = `15.0%` $\rightarrow$ Clean whole number: **`15%`** (`Gst Spares 15%-{HSN}`)
+- **Inter-State IGST:** Full support for single-rate inter-state transactions (`18%`, `0.25%`, `5%`, `12%`).
+
+---
+
+## Paisa-Accurate Round-Off Engine
+
+Each commercial invoice rounds line items mathematically to the whole rupee. Over thousands of rows, cumulative paisa discrepancies arise between the sum of line credits and the rounded invoice total.
+
+SALES2TALLY balances every voucher to **exact ₹0.00 difference**:
+
+$$\text{Gross Sum} = \text{Taxable Price} + \text{CGST} + \text{SGST} + \text{IGST}$$
+$$\text{Rounded Total} = \text{round\_half\_up}(\text{Gross Sum})$$
+$$\text{Misc Offset} = \text{Rounded Total} - (\text{Price} + \text{CGST} + \text{SGST} + \text{IGST})$$
+
+### 3-Row Misc Verification Breakdown:
+In Step 4 of the user interface, the round-off is transparently audited:
+
+1. **`Misc Round Up (+)`** (Greyed-out label, **Green Amount**):  
+   Sum of all positive invoice offsets where the total was rounded up.
+2. **`Misc Round Down (-)`** (Greyed-out label, **Red Amount with `-` sign**):  
+   Sum of all negative invoice offsets where the total was rounded down.
+3. **`Net Misc / Round-off`** (Greyed-out label, **Dynamically Colored Amount**):  
+   The algebraic net: $\text{Round Up} - \text{Round Down}$. Green if $\ge 0$, Red if $< 0$.
+4. **Reconciliation Formula:**  
+   $$\text{Selling Price} + \text{CGST} + \text{SGST} + \text{IGST} + \mathbf{Net\ Misc} = \mathbf{Grand\ Total}$$
+   *(Zero double-counting: only the Net Misc is included in the bottom grand total).*
+
+---
+
+## Strict Ledger Validation & Tally Safeguards
+
+To prevent Tally import runtime exceptions (e.g. `Ledger 'Cgst 2.5% Output' does not exist`), SALES2TALLY includes a strict pre-flight validator:
+
+```mermaid
+flowchart TD
+    Click["User clicks 'Download Accounting Vouchers XML'"] --> Check{"Validate All Mappers"}
+    
+    Check -->|"1. Party A/c Not Selected"| ShowModal["BLOCK EXPORT & Open Screen Modal"]
+    Check -->|"2. Any Tax Rate Unmapped"| ShowModal
+    Check -->|"3. Any HSN Code Unmapped"| ShowModal
+    Check -->|"4. Misc Ledger Unmapped"| ShowModal
+    
+    ShowModal --> Detail["Display list of unmapped ledgers with 'OK' button"]
+    Detail --> Fix["User closes modal and completes mapping"]
+    
+    Check -->|"All 4 Sections 100% Mapped"| Generate["Proceed to XML Generation"]
+```
+
+### Company Name Auto-Discovery:
+- **Case-Insensitive Match:** When connecting to Tally on Port 9000, typing `dvs test` automatically queries Tally Prime and replaces it with Tally's exact official name: **`Dvs Test`**.
+- **SVCURRENTCOMPANY Tag:** Every generated XML writes `<SVCURRENTCOMPANY>Dvs Test</SVCURRENTCOMPANY>`, ensuring that Tally routes vouchers strictly to the intended company without cross-contamination.
+
+---
+
+## Project Directory Structure
+
+```text
 Sales & Purchase Registers/
+├── app.py                             # Core server & window launcher
+├── config.py                          # App configuration, base paths, target columns
+├── build_pipeline.py                  # PyArmor + PyInstaller + Inno Setup build script
+├── installer_setup.iss                # Inno Setup Windows installer compiler script
 │
-├── app.py                          # Lean app entry point & server launcher (~36 lines)
-├── config.py                       # Paths, constants (TARGET_COLUMNS), PyInstaller configs
+├── accounting_voucher/                # Mode 2: Accounting Invoice Subsystem
+│   ├── routes.py                      # Accounting mode API blueprint endpoints
+│   └── services/
+│       ├── analysis_service.py        # HSN & decimal rate analyzer with fuzzy ledger matcher
+│       ├── xml_generator.py           # Vouchers XML generator with ₹0.00 balancing & SVCURRENTCOMPANY
+│       ├── excel_generator.py         # 2-sheet formatted summary Excel workbook (XlsxWriter)
+│       └── tally_service.py           # Port 9000 live TDL connector & local company disk cache
 │
-├── utils/                          # Utility functions
-│   ├── __init__.py
-│   ├── helpers.py                  # Excel reading, date parsing, cell cleaners, commercial rounding
-│   └── matching.py                 # Name normalization, tokenization, Jaccard fuzzy similarity
+├── services/                          # Mode 1: Item Invoice Subsystem
+│   ├── tally_ledger_service.py        # Port 9000 ledger sync & company cache
+│   ├── tally_stock_service.py         # Port 9000 stock items sync & cache
+│   ├── master_creator.py              # Missing Sundry Debtors & Stock Items creator XML
+│   ├── xml_generator.py               # Item-based sales vouchers XML generator
+│   └── excel_generator.py             # Item-based audit summary Excel generator
 │
-├── services/                       # Business logic & external integration services
-│   ├── __init__.py
-│   ├── tally_ledger_service.py     # Tally Prime XML HTTP communications, sync & cache ledgers
-│   ├── tally_stock_service.py      # Tally Prime XML HTTP communications, sync & cache stock items
-│   ├── master_creator.py           # XML builders & executors for creating missing Ledgers & Stock Items
-│   ├── xml_generator.py            # Generates multi-item sales vouchers XML with exact round-off offset
-│   └── excel_generator.py          # Generates 2-sheet formatted summary Excel workbook (XlsxWriter)
-│
-├── routes/                         # Flask API blueprints
-│   ├── __init__.py
-│   ├── main_routes.py              # Index (/), Upload (/upload), Headers (/get-headers), Download (/download)
-│   ├── tally_routes.py             # Tally sync, companies list, ledgers retrieval, master creation endpoints
-│   ├── analysis_routes.py          # Date range detection, tax rates detection, party & product verification
-│   └── generator_routes.py         # /generate (XML) and /generate_excel (XLSX)
+├── routes/                            # Mode 1: API Blueprints
+│   ├── main_routes.py                 # File upload, headers detection, and downloads
+│   ├── tally_routes.py                # Mode 1 Tally sync and master creation
+│   ├── analysis_routes.py             # Party & product verification reports
+│   └── generator_routes.py            # XML & Excel triggers
 │
 ├── templates/
-│   └── index.html                  # Pure semantic HTML markup & modal dialogs (~400 lines)
+│   ├── base.html                      # Layout shell, headers, and navigation
+│   ├── index.html                     # Mode 1: Item Invoice UI
+│   └── accounting_section.html        # Mode 2: Accounting Invoice UI & Modals
 │
 └── static/
-    ├── style.css                   # Custom CSS styling & modal definitions
-    └── js/                         # Modular Frontend JavaScript
-        ├── config.js               # Field definitions (targetFields) and autoMatches keywords
-        ├── utils.js                # UI status bar notifications and loaders
-        ├── upload.js               # Drag-and-drop, workbook uploading, and sheet selection
-        ├── mapping.js              # Header mapping grid builder, auto-match, and date slicer
-        ├── tally.js                # Tally sync, company profile loading, dynamic tax rate detection
-        ├── verification.js         # Party & product verification reports and missing master creation modals
-        ├── generator.js            # XML & Excel generation triggers and download link handlers
-        └── main.js                 # Main application entry point & DOM event wiring
+    ├── style.css                      # Unified modern dark theme stylesheet
+    └── js/
+        ├── accounting.js              # Mode 2: Accounting wizard, mapper validation, and XML trigger
+        ├── main.js                    # Mode 1: Main entry point
+        ├── mapping.js                 # Mode 1: Header mapping grid
+        ├── tally.js                   # Mode 1: Tally sync controller
+        └── verification.js            # Mode 1: Party and stock verification
 ```
 
 ---
 
-## Modules Breakdown
+## Build & Packaging Pipeline
 
-### Core Configuration & Entry Point
+SALES2TALLY includes a fully automated 4-stage build pipeline:
 
-| File | Purpose |
-| :--- | :--- |
-| [`app.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/app.py) | Application factory (`create_app`), registers all 4 modular blueprints (`main_bp`, `tally_bp`, `analysis_bp`, `generator_bp`), launches browser on port 5005. |
-| [`config.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/config.py) | Base paths, PyInstaller frozen directory resolution (`_MEIPASS`), 14 target column definitions, Tally URL (`http://localhost:9000`). |
+```powershell
+python build_pipeline.py
+```
 
-### Utils Package (`utils/`)
-
-| Module | Key Functions | Description |
-| :--- | :--- | :--- |
-| [`utils/helpers.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/utils/helpers.py) | `find_headers_and_df`, `clean_gst_cell`, `clean_date_cell`, `parse_date_to_comparable`, `filter_df_by_date_range`, `clean_numeric_cell`, `clean_text_cell`, `to_float`, `custom_round` | Slices Excel sheets by header row, cleans messy data, handles date parsing and commercial half-up rounding. |
-| [`utils/matching.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/utils/matching.py) | `normalize_party_name`, `clean_and_tokenize`, `get_word_match_score`, `compact_party_name`, `find_matching_ledger` | Normalizes business party names, strips suffixes (Pvt Ltd, LLP), and performs tokenized Jaccard similarity matching (>= 0.60). |
-
-### Services Package (`services/`)
-
-| Module | Key Functions | Description |
-| :--- | :--- | :--- |
-| [`services/tally_ledger_service.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/services/tally_ledger_service.py) | `sync_ledgers_from_tally`, `get_cached_ledgers`, `get_all_cached_companies`, `clean_tally_xml` | Handles HTTP XML export requests to Tally Prime on port 9000 for accounting ledgers and manages local JSON cache in `tally_companies/`. |
-| [`services/tally_stock_service.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/services/tally_stock_service.py) | `sync_stock_from_tally`, `get_cached_stock` | Handles HTTP XML export requests to Tally Prime on port 9000 for inventory stock items and manages local JSON cache. |
-| [`services/master_creator.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/services/master_creator.py) | `create_missing_ledgers_in_tally`, `create_missing_stock_items_in_tally`, `escape_xml_value` | Generates Tally `All Masters` XML envelopes to auto-create missing Sundry Debtors and Stock Items (with HSN & GST rates). |
-| [`services/xml_generator.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/services/xml_generator.py) | `generate_tally_vouchers_xml` | Builds grouped multi-item sales vouchers XML with commercial rounding, tax allocations, and `Misc` offset calculation. |
-| [`services/excel_generator.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/services/excel_generator.py) | `generate_formatted_excel` | Creates a 2-sheet formatted workbook (`Processed Data` + `Final Summary & Grouping`) using `xlsxwriter`. |
-
-### Routes Package (`routes/`)
-
-| Blueprint | Endpoints | Description |
-| :--- | :--- | :--- |
-| [`routes/main_routes.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/routes/main_routes.py) | `GET /`, `POST /upload`, `POST /get-headers`, `GET /download/<path:filename>` | Web UI rendering, workbook uploading, header retrieval, and file downloads. |
-| [`routes/tally_routes.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/routes/tally_routes.py) | `POST /api/tally/sync`, `POST /api/tally/sync-stock`, `GET /api/tally/companies`, `POST /api/tally/ledgers`, `POST /api/tally/create-missing-ledgers`, `POST /api/tally/create-missing-items` | Tally sync, cached ledger/stock querying, and 1-click master creation. |
-| [`routes/analysis_routes.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/routes/analysis_routes.py) | `POST /api/get-date-range`, `POST /api/detect-tax-rates`, `POST /api/check-parties`, `POST /api/check-products` | Date range limits, auto tax rate calculation, party verification, and product verification. |
-| [`routes/generator_routes.py`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/routes/generator_routes.py) | `POST /generate`, `POST /generate_excel` | Generates Tally Vouchers XML and formatted summary Excel workbooks. |
-
-### Frontend Architecture (`templates/` & `static/js/`)
-
-| Script | Purpose |
-| :--- | :--- |
-| [`static/js/config.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/config.js) | Standard 14 target fields metadata, auto-match keywords dictionary, and shared application state. |
-| [`static/js/utils.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/utils.js) | `showStatus()`, `hideStatus()` status bar notification & spinner controls. |
-| [`static/js/upload.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/upload.js) | File drag-and-drop, upload request handling, and worksheet header scanning. |
-| [`static/js/mapping.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/mapping.js) | Dynamic mapping grid rendering, auto-match trigger, and date slicer min/max limits. |
-| [`static/js/tally.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/tally.js) | Synced company profiles loader, Tally sync triggers, and dynamic tax rate dropdown generation. |
-| [`static/js/verification.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/verification.js) | Customer party and product verification reports, missing item creation modal submissions. |
-| [`static/js/generator.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/generator.js) | Sales XML and Processed Excel generation requests and download link presentation. |
-| [`static/js/main.js`](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/static/js/main.js) | DOMContentLoaded initialization, event listeners, and modal open/close wiring. |
+1. **Clean:** Wipes `build/`, `dist/`, and `dist_obf/`.
+2. **PyArmor Obfuscation:** Encrypts and obfuscates all source code (including `app.py`, `config.py`, `routes/`, `services/`, and `accounting_voucher/`).
+3. **PyInstaller Packaging:** Bundles the obfuscated code with Python 3.12 runtime and PyWebView into a standalone application directory (`--noconsole`, `--onedir`).
+4. **Inno Setup (ISCC):** Compiles the directory into a single-file, digitally ready Windows setup installer:
+   - Output: `dist/SALES2TALLY_Setup_v1.0.exe` (~40.4 MB).
+   - Features: Desktop shortcut, Start Menu folder, uninstaller, and AppData persistence.
 
 ---
 
-## 6. Master Creation XML Specification Guide
+## License & Proprietary Notice
 
-For complete technical specifications, exact XML tags, and field mappings for **Party Ledgers** and **Stock Items** in Tally Prime, see the dedicated reference guide:
-
-👉 **[TALLY_MASTER_MAPPING.md](file:///c:/Users/pichi/Desktop/Sales%20&%20Purchase%20Registers/TALLY_MASTER_MAPPING.md)**
-
+Copyright © 2026 Venukumar. All rights reserved.  
+Proprietary software developed for automated Tally Prime commercial accounting integration.
