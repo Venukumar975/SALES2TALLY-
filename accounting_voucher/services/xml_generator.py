@@ -157,6 +157,8 @@ def generate_accounting_vouchers_xml(
     global_hsn_stats = {}      # hsn_code -> {"rows_count": 0, "total_price": 0.0}
     global_tax_stats = {}      # (type, rate) -> float
     global_misc_total = 0.0
+    global_misc_round_up = 0.0
+    global_misc_round_down = 0.0
     global_selling_price = 0.0
     global_cgst = 0.0
     global_sgst = 0.0
@@ -313,6 +315,10 @@ def generate_accounting_vouchers_xml(
 
         misc_offset = round(rounded_total - exact_credits_sum, 2)
         global_misc_total += misc_offset
+        if misc_offset > 0.0001:
+            global_misc_round_up += misc_offset
+        elif misc_offset < -0.0001:
+            global_misc_round_down += abs(misc_offset)
         global_grand_total += rounded_total
 
         if abs(misc_offset) > 0.001:
@@ -437,6 +443,8 @@ def generate_accounting_vouchers_xml(
         "hsn_breakdown": hsn_breakdown,
         "tax_breakdown": tax_breakdown,
         "misc_offset": round(global_misc_total, 2),
+        "misc_round_up": round(global_misc_round_up, 2),
+        "misc_round_down": round(global_misc_round_down, 2),
         "misc_ledger_name": misc_ledger_name or "Misc Exp",
         "total_selling_price": round(global_selling_price, 2),
         "total_cgst": round(global_cgst, 2),

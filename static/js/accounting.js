@@ -918,6 +918,7 @@ function renderAcctHsnMappingGrid(hsnList) {
         select.className = "acct-hsn-select";
         select.setAttribute("data-hsn-key", `${item.hsn_code}_${item.gst_rate}`);
         select.setAttribute("data-hsn-code", item.hsn_code);
+        select.setAttribute("data-gst-rate", item.gst_rate);
 
         // Populate options ONLY with ledgers from this HSN code's volatile bucket
         const code = String(item.hsn_code).trim();
@@ -1147,6 +1148,36 @@ function onAcctPartyChanged() {
     }
 }
 
+function escapeAcctHtml(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function showAcctUnmappedModal(errors) {
+    const modal = document.getElementById("acct-unmapped-warning-modal");
+    const container = document.getElementById("acct-unmapped-list-container");
+    if (!modal || !container) {
+        const msg = errors.map(e => `• ${e.title}: ${e.desc}`).join("\n\n");
+        alert("⚠️ CANNOT GENERATE XML - UNMAPPED LEDGERS:\n\n" + msg);
+        return;
+    }
+
+    container.innerHTML = errors.map(e => `
+        <div style="margin-bottom: 12px; padding: 10px 12px; background: rgba(239,68,68,0.12); border-left: 3px solid #ef4444; border-radius: 4px;">
+            <div style="font-weight: 700; color: #f87171; font-size: 0.9rem; margin-bottom: 4px;">• ${escapeAcctHtml(e.title)}</div>
+            <div style="color: #cbd5e1; font-size: 0.83rem; line-height: 1.45;">${escapeAcctHtml(e.desc)}</div>
+        </div>
+    `).join("");
+
+    modal.style.display = "flex";
+}
+
+function closeAcctUnmappedModal() {
+    const modal = document.getElementById("acct-unmapped-warning-modal");
+    if (modal) modal.style.display = "none";
+}
+window.closeAcctUnmappedModal = closeAcctUnmappedModal;
+
 // 9. GENERATE ACCOUNTING XML
 async function generateAcctXml() {
     if (!AccountingState.fileId) {
@@ -1159,41 +1190,78 @@ async function generateAcctXml() {
     const partyName = (document.getElementById("acct_party_name")?.value || "").trim();
 
     if (!companyName) {
-        alert("Tally Company Name is required");
+        alert("Tally Company Name is required. Please sync or select a company.");
         return;
     }
+
+    // STRICT MAPPER VALIDATION
+    const unmappedErrors = [];
+
+    // 1. Party Name Check
     if (!partyName) {
-        alert("Please select Party A/c Name from Tally ledgers");
-        return;
+        unmappedErrors.push({
+            title: "Party Ledger",
+            desc: "Party A/c Name is not selected in Step 3."
+        });
     }
 
-    // Collect HSN mappings
-    const hsnMappings = {};
-    const unmappedHsn = [];
-    document.querySelectorAll(".acct-hsn-select").forEach(sel => {
-        const key = sel.getAttribute("data-hsn-key");
-        if (sel.value) {
-            hsnMappings[key] = sel.value;
-        } else {
-            unmappedHsn.push(sel.getAttribute("data-hsn-code") || key);
-        }
-    });
-
-    if (unmappedHsn.length > 0) {
-        const proceed = confirm(`⚠️ Warning: ${unmappedHsn.length} HSN code(s) (${unmappedHsn.join(', ')}) are currently '-- Not Mapped --'.\n\nDo you want to proceed anyway with default ledger names?`);
-        if (!proceed) return;
-    }
-
-    // Collect Tax mappings
+    // 2. Tax Mappings Check
     const taxMappings = {};
+    const unmappedTaxList = [];
     document.querySelectorAll(".acct-tax-select").forEach(sel => {
         const key = sel.getAttribute("data-tax-key");
-        if (sel.value) {
-            taxMappings[key] = sel.value;
+        const val = (sel.value || "").trim();
+        if (val) {
+            taxMappings[key] = val;
+        } else {
+            unmappedTaxList.push(key);
         }
     });
 
-    const miscLrg = document.getElementById("acct_misc_ledger")?.value || "Misc Exp";
+    if (unmappedTaxList.length > 0) {
+        unmappedErrors.push({
+            title: `Tax Rate Ledgers (${unmappedTaxList.length} unmapped)`,
+            desc: unmappedTaxList.join(", ")
+        });
+    }
+
+    // 3. Spares HSN Mappings Check
+    const hsnMappings = {};
+    const unmappedHsnList = [];
+    document.querySelectorAll(".acct-hsn-select").forEach(sel => {
+        const key = sel.getAttribute("data-hsn-key");
+        const code = sel.getAttribute("data-hsn-code") || key;
+        const rate = sel.getAttribute("data-gst-rate") || "";
+        const val = (sel.value || "").trim();
+        if (val) {
+            hsnMappings[key] = val;
+        } else {
+            unmappedHsnList.push(rate ? `HSN ${code} (${rate}%)` : `HSN ${code}`);
+        }
+    });
+
+    if (unmappedHsnList.length > 0) {
+        unmappedErrors.push({
+            title: `Spares HSN Ledgers (${unmappedHsnList.length} unmapped)`,
+            desc: unmappedHsnList.join(", ")
+        });
+    }
+
+    // 4. Misc / Round-off Ledger Check
+    const miscLrg = (document.getElementById("acct_misc_ledger")?.value || "").trim();
+    if (!miscLrg || miscLrg === "-- Not Selected --") {
+        unmappedErrors.push({
+            title: "Round-off / Misc Ledger",
+            desc: "Misc / Round-off Ledger is not selected in Step 4."
+        });
+    }
+
+    // BLOCK XML GENERATION AND SHOW SCREEN POPUP IF ANY UNMAPPED
+    if (unmappedErrors.length > 0) {
+        showAcctUnmappedModal(unmappedErrors);
+        return;
+    }
+
     const narrationPrefix = document.getElementById("acct_narration_prefix")?.value || "GST Invoice Number :: ";
 
     const partyDetails = {
@@ -1295,17 +1363,40 @@ async function generateAcctXml() {
                 taxTbody.appendChild(row);
             });
 
-            // Add Misc / Round-off entry (supports positive or negative)
+            // 3 Misc Rows: Round Up (+), Round Down (-), and Net Misc / Round-off
+            // All labels are greyed out with color: var(--text-muted)
             const miscLrgName = audit.misc_ledger_name || 'Misc Exp';
-            const miscSign = miscVal >= 0 ? '+' : '-';
-            const miscColor = miscVal >= 0 ? 'var(--brand-primary)' : '#f87171';
-            const miscRow = document.createElement("tr");
-            miscRow.innerHTML = `
-                <td style="text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text-muted);">Misc / Round-off (${miscLrgName})</td>
-                <td style="text-align: center; padding: 10px 12px; color: var(--text-muted);">—</td>
-                <td style="text-align: right; padding: 10px 12px; font-weight: 600; color: ${miscColor};">${miscSign}₹ ${Math.abs(miscVal).toFixed(2)}</td>
+            const miscUp = Number(audit.misc_round_up || 0);
+            const miscDown = Math.abs(Number(audit.misc_round_down || 0));
+            const netMiscSign = miscVal >= 0 ? '+' : '-';
+            const netMiscColor = miscVal >= 0 ? 'var(--brand-primary)' : '#f87171';
+
+            // 1. Misc Round Up (+) -> Green value, greyed out label
+            const rowUp = document.createElement("tr");
+            rowUp.innerHTML = `
+                <td style="text-align: left; padding: 8px 12px; font-weight: 600; color: var(--text-muted);">Misc Round Up (+)</td>
+                <td style="text-align: center; padding: 8px 12px; color: var(--text-muted);">—</td>
+                <td style="text-align: right; padding: 8px 12px; font-weight: 600; color: var(--brand-primary);">+₹ ${miscUp.toFixed(2)}</td>
             `;
-            taxTbody.appendChild(miscRow);
+            taxTbody.appendChild(rowUp);
+
+            // 2. Misc Round Down (-) -> Red value, greyed out label
+            const rowDown = document.createElement("tr");
+            rowDown.innerHTML = `
+                <td style="text-align: left; padding: 8px 12px; font-weight: 600; color: var(--text-muted);">Misc Round Down (-)</td>
+                <td style="text-align: center; padding: 8px 12px; color: var(--text-muted);">—</td>
+                <td style="text-align: right; padding: 8px 12px; font-weight: 600; color: #f87171;">-₹ ${miscDown.toFixed(2)}</td>
+            `;
+            taxTbody.appendChild(rowDown);
+
+            // 3. Net Misc / Round-off -> Color depends on net sign, greyed out label
+            const rowNet = document.createElement("tr");
+            rowNet.innerHTML = `
+                <td style="text-align: left; padding: 8px 12px; font-weight: 600; color: var(--text-muted);">Net Misc / Round-off (${miscLrgName})</td>
+                <td style="text-align: center; padding: 8px 12px; color: var(--text-muted);">—</td>
+                <td style="text-align: right; padding: 8px 12px; font-weight: 600; color: ${netMiscColor};">${netMiscSign}₹ ${Math.abs(miscVal).toFixed(2)}</td>
+            `;
+            taxTbody.appendChild(rowNet);
         }
         const taxHeadsCount = document.getElementById("acct-tax-heads-count");
         if (taxHeadsCount) taxHeadsCount.textContent = `${(audit.tax_breakdown || []).length} Tax Heads + Misc`;

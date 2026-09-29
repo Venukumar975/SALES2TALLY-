@@ -526,4 +526,33 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL FOR UNMAPPED MAPPERS WARNING -->
+    <div id="acct-unmapped-warning-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 580px; border-top: 4px solid #ef4444;">
+        <div class="modal-header">
+          <h2 style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+            <svg style="width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2;" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            Cannot Generate XML: Unmapped Ledgers Found
+          </h2>
+          <span class="modal-close-x" onclick="closeAcctUnmappedModal()">&times;</span>
+        </div>
+        <div class="modal-body" style="padding: 16px 20px;">
+          <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-color);">
+            XML generation has been <strong>blocked</strong> because some required ledgers are not mapped to your Tally company. Generating XML with unmapped ledgers will cause Tally import exceptions.
+          </p>
+          <div id="acct-unmapped-list-container" style="max-height: 260px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px 16px; border: 1px solid rgba(239,68,68,0.3);">
+            <!-- Populated dynamically via JS -->
+          </div>
+          <p style="margin-top: 14px; font-size: 0.82rem; color: var(--text-muted);">
+            Please map these ledgers to valid Tally ledgers before generating XML to prevent import errors.
+          </p>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="close-modal-btn" id="btn-acct-unmapped-ok" onclick="closeAcctUnmappedModal()" style="background: var(--brand-primary); color: #fff; font-weight: 700; padding: 8px 28px; border-radius: 6px; cursor: pointer; font-size: 0.95rem;">
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
 </div>
