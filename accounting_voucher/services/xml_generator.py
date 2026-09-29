@@ -69,7 +69,7 @@ def generate_accounting_vouchers_xml(
 ):
     """
     Generates Tally Prime Import XML for Accounting Invoices (Spares HSN Ledgers).
-    - Mode: Accounting Voucher View (<PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>)
+    - Mode: Invoice Voucher View (<PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>)
     - Debits: Single Party Ledger (<AMOUNT>-Total</AMOUNT>)
     - Credits:
       1. HSN Spares Ledgers (e.g. Gst Spares 18%-87141090) for Selling Price
@@ -91,11 +91,9 @@ def generate_accounting_vouchers_xml(
     col_date = column_mappings.get("invoice_date")
     col_hsn = column_mappings.get("hsn_code")
     col_price = column_mappings.get("selling_price")
-    col_cgst = column_mappings.get("cgst_amount")
-    col_sgst = column_mappings.get("sgst_amount")
     col_cgst_pct = column_mappings.get("cgst_rate")
     col_sgst_pct = column_mappings.get("sgst_rate")
-    col_igst = column_mappings.get("igst_amount")
+    col_igst_pct = column_mappings.get("igst_rate")
 
     # Filter by date range if provided
     if col_date and (from_date or to_date):
@@ -172,9 +170,21 @@ def generate_accounting_vouchers_xml(
                 continue
 
             price = float(str(row.get(col_price, 0)).replace(",", "")) if pd.notna(row.get(col_price)) else 0.0
-            c_amt = float(str(row.get(col_cgst, 0)).replace(",", "")) if col_cgst and pd.notna(row.get(col_cgst)) else 0.0
-            s_amt = float(str(row.get(col_sgst, 0)).replace(",", "")) if col_sgst and pd.notna(row.get(col_sgst)) else 0.0
-            i_amt = float(str(row.get(col_igst, 0)).replace(",", "")) if col_igst and pd.notna(row.get(col_igst)) else 0.0
+
+            # Determine statutory tax rates directly from rate columns
+            c_pct = float(str(row.get(col_cgst_pct, 0)).replace(",", "")) if col_cgst_pct and col_cgst_pct in grp.columns and pd.notna(row.get(col_cgst_pct)) else 0.0
+            s_pct = float(str(row.get(col_sgst_pct, 0)).replace(",", "")) if col_sgst_pct and col_sgst_pct in grp.columns and pd.notna(row.get(col_sgst_pct)) else 0.0
+            i_pct = float(str(row.get(col_igst_pct, 0)).replace(",", "")) if col_igst_pct and col_igst_pct in grp.columns and pd.notna(row.get(col_igst_pct)) else 0.0
+
+            c_rate = int(round(c_pct)) if c_pct > 0 else 0
+            s_rate = int(round(s_pct)) if s_pct > 0 else 0
+            i_rate = int(round(i_pct)) if i_pct > 0 else 0
+            tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+
+            # Mathematical commercial tax calculation (Rate applied to Selling Price)
+            c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
+            s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
+            i_amt = custom_round_2dec(price * (i_rate / 100.0)) if i_rate > 0 else 0.0
 
             invoice_total_price += price
             invoice_total_cgst += c_amt
@@ -187,27 +197,6 @@ def generate_accounting_vouchers_xml(
             global_sgst += s_amt
             global_igst += i_amt
 
-            # Determine rate
-            c_pct = float(row.get(col_cgst_pct)) if col_cgst_pct and pd.notna(row.get(col_cgst_pct)) else None
-            s_pct = float(row.get(col_sgst_pct)) if col_sgst_pct and pd.notna(row.get(col_sgst_pct)) else None
-
-            if c_pct is not None and s_pct is not None and (c_pct > 0 or s_pct > 0):
-                c_rate = int(round(c_pct))
-                s_rate = int(round(s_pct))
-                tot_rate = c_rate + s_rate
-            elif price > 0:
-                if c_amt > 0 or s_amt > 0:
-                    c_rate = int(round((c_amt / price) * 100))
-                    s_rate = int(round((s_amt / price) * 100))
-                    tot_rate = int(round(((c_amt + s_amt) / price) * 100))
-                elif i_amt > 0:
-                    tot_rate = int(round((i_amt / price) * 100))
-                    c_rate, s_rate = 0, 0
-                else:
-                    tot_rate, c_rate, s_rate = 0, 0, 0
-            else:
-                tot_rate, c_rate, s_rate = 0, 0, 0
-
             # HSN key
             hsn_key = f"{raw_hsn}_{tot_rate}"
             hsn_amounts[hsn_key] = hsn_amounts.get(hsn_key, 0.0) + price
@@ -217,7 +206,7 @@ def generate_accounting_vouchers_xml(
             global_hsn_stats[raw_hsn]["rows_count"] += 1
             global_hsn_stats[raw_hsn]["total_price"] += price
 
-            # Tax keys
+            # Tax keys - only populate if rate > 0
             if c_rate > 0 and c_amt > 0:
                 t_key = f"Cgst {c_rate}% Output"
                 cgst_amounts[t_key] = cgst_amounts.get(t_key, 0.0) + c_amt
@@ -230,10 +219,10 @@ def generate_accounting_vouchers_xml(
                 k_tax = ("SGST", f"{s_rate}%")
                 global_tax_stats[k_tax] = global_tax_stats.get(k_tax, 0.0) + s_amt
 
-            if tot_rate > 0 and i_amt > 0:
-                t_key = f"Igst {tot_rate}% Output"
+            if i_rate > 0 and i_amt > 0:
+                t_key = f"Igst {i_rate}% Output"
                 igst_amounts[t_key] = igst_amounts.get(t_key, 0.0) + i_amt
-                k_tax = ("IGST", f"{tot_rate}%")
+                k_tax = ("IGST", f"{i_rate}%")
                 global_tax_stats[k_tax] = global_tax_stats.get(k_tax, 0.0) + i_amt
 
         # 2. Credits: HSN Spares Ledgers
@@ -251,11 +240,11 @@ def generate_accounting_vouchers_xml(
             exact_credits_sum += price_rounded
 
             ledger_entries_xml.append(f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{escape_xml_value(ledger_name)}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
           <AMOUNT>{price_rounded:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>""")
+        </LEDGERENTRIES.LIST>""")
 
         # 3. Credits: Tax Ledgers
         for t_key, t_amt in cgst_amounts.items():
@@ -264,11 +253,11 @@ def generate_accounting_vouchers_xml(
                 amt_rounded = round(t_amt, 2)
                 exact_credits_sum += amt_rounded
                 ledger_entries_xml.append(f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{escape_xml_value(tax_ledger_name)}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
           <AMOUNT>{amt_rounded:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>""")
+        </LEDGERENTRIES.LIST>""")
 
         for t_key, t_amt in sgst_amounts.items():
             if t_amt > 0:
@@ -276,11 +265,11 @@ def generate_accounting_vouchers_xml(
                 amt_rounded = round(t_amt, 2)
                 exact_credits_sum += amt_rounded
                 ledger_entries_xml.append(f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{escape_xml_value(tax_ledger_name)}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
           <AMOUNT>{amt_rounded:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>""")
+        </LEDGERENTRIES.LIST>""")
 
         for t_key, t_amt in igst_amounts.items():
             if t_amt > 0:
@@ -288,11 +277,11 @@ def generate_accounting_vouchers_xml(
                 amt_rounded = round(t_amt, 2)
                 exact_credits_sum += amt_rounded
                 ledger_entries_xml.append(f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{escape_xml_value(tax_ledger_name)}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
           <AMOUNT>{amt_rounded:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>""")
+        </LEDGERENTRIES.LIST>""")
 
         # 4. Total and Misc Round-off Calculation
         gross_sum = invoice_total_price + invoice_total_cgst + invoice_total_sgst + invoice_total_igst
@@ -306,20 +295,20 @@ def generate_accounting_vouchers_xml(
 
         if abs(misc_offset) > 0.001:
             ledger_entries_xml.append(f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{escape_xml_value(misc_ledger_name or 'Misc Exp')}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
           <AMOUNT>{misc_offset:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>""")
+        </LEDGERENTRIES.LIST>""")
 
         # 5. Party Ledger Debit Entry
         party_entry = f"""
-        <ALLLEDGERENTRIES.LIST>
+        <LEDGERENTRIES.LIST>
           <LEDGERNAME>{party_name_clean}</LEDGERNAME>
           <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
           <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
           <AMOUNT>-{rounded_total:.2f}</AMOUNT>
-        </ALLLEDGERENTRIES.LIST>"""
+        </LEDGERENTRIES.LIST>"""
 
         # Verify debit/credit balance for this voucher
         vch_debit = rounded_total
@@ -363,7 +352,7 @@ def generate_accounting_vouchers_xml(
         <CONSIGNEEMAILINGNAME>{buyer_name}</CONSIGNEEMAILINGNAME>
         <CONSIGNEESTATENAME>{state_clean}</CONSIGNEESTATENAME>
         <CONSIGNEECOUNTRYNAME>{country_clean}</CONSIGNEECOUNTRYNAME>
-        <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+        <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
         <NARRATION>{escape_xml_value(narration_text)}</NARRATION>
         {all_entries_str}
       </VOUCHER>

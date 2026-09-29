@@ -1,8 +1,18 @@
 import os
 import re
+import math
 from datetime import datetime
 import pandas as pd
 from difflib import SequenceMatcher
+
+def custom_round_2dec(val):
+    """Exact half-up commercial rounding to 2 decimal places."""
+    try:
+        f = float(val)
+    except (ValueError, TypeError):
+        return 0.0
+    sign = 1 if f >= 0 else -1
+    return sign * (math.floor(abs(f) * 100.0 + 0.5) / 100.0)
 
 def parse_date_to_comparable(val):
     if val is None or pd.isna(val):
@@ -140,7 +150,8 @@ def best_match_ledger(target_name, available_ledgers, threshold=0.6):
 def auto_detect_columns(df_columns):
     """
     Intelligently auto-map standard Excel columns for Accounting Spares Vouchers.
-    Required: Invoice Number, Invoice Date, HSN Code, Selling Price, CGST Amount, SGST Amount
+    Required: Invoice Number, Invoice Date, HSN Code, Selling Price, CGST Rate (%), SGST Rate (%)
+    Optional: IGST Rate (%)
     """
     cols_clean = {c: str(c).strip().lower() for c in df_columns}
     mapping = {
@@ -148,11 +159,8 @@ def auto_detect_columns(df_columns):
         "invoice_date": "",
         "hsn_code": "",
         "selling_price": "",
-        "cgst_amount": "",
-        "sgst_amount": "",
         "cgst_rate": "",
         "sgst_rate": "",
-        "igst_amount": "",
         "igst_rate": ""
     }
     
@@ -165,36 +173,43 @@ def auto_detect_columns(df_columns):
             mapping["hsn_code"] = orig
         elif not mapping["selling_price"] and any(k in c for k in ["selling price", "taxable amount", "taxable value", "taxable", "basic amount", "net amount"]):
             mapping["selling_price"] = orig
-        elif not mapping["cgst_amount"] and ("cgst" in c and any(a in c for a in ["amount", "amt", "val"])):
-            mapping["cgst_amount"] = orig
-        elif not mapping["sgst_amount"] and ("sgst" in c and any(a in c for a in ["amount", "amt", "val"])):
-            mapping["sgst_amount"] = orig
-        elif not mapping["cgst_rate"] and ("cgst" in c and any(r in c for r in ["%", "rate", "percent"])):
+        elif not mapping["cgst_rate"] and any(k in c for k in [
+            "cgst %", "cgst rate", "cgst tax rate", "cgst percent", "cgst percentage", "cgst_rate", "cgst ratio", "cgst%"
+        ]):
             mapping["cgst_rate"] = orig
-        elif not mapping["sgst_rate"] and ("sgst" in c and any(r in c for r in ["%", "rate", "percent"])):
+        elif not mapping["sgst_rate"] and any(k in c for k in [
+            "sgst %", "sgst rate", "sgst tax rate", "sgst percent", "sgst percentage", "sgst_rate", "sgst ratio", "sgst%"
+        ]):
             mapping["sgst_rate"] = orig
-        elif not mapping["igst_amount"] and ("igst" in c and any(a in c for a in ["amount", "amt", "val"])):
-            mapping["igst_amount"] = orig
-            
-    # Fallback checks if amount without explicit word
-    if not mapping["cgst_amount"]:
+        elif not mapping["igst_rate"] and any(k in c for k in [
+            "igst %", "igst rate", "igst tax rate", "igst percent", "igst percentage", "igst_rate", "igst ratio", "igst%"
+        ]):
+            mapping["igst_rate"] = orig
+
+    # Secondary fallback check for short headers
+    if not mapping["cgst_rate"]:
         for orig, c in cols_clean.items():
-            if c == "cgst":
-                mapping["cgst_amount"] = orig
+            if c in ("cgst", "cgst_rate", "cgst_pct", "cgst %"):
+                mapping["cgst_rate"] = orig
                 break
-    if not mapping["sgst_amount"]:
+    if not mapping["sgst_rate"]:
         for orig, c in cols_clean.items():
-            if c == "sgst":
-                mapping["sgst_amount"] = orig
+            if c in ("sgst", "sgst_rate", "sgst_pct", "sgst %"):
+                mapping["sgst_rate"] = orig
                 break
-                
+    if not mapping["igst_rate"]:
+        for orig, c in cols_clean.items():
+            if c in ("igst", "igst_rate", "igst_pct", "igst %"):
+                mapping["igst_rate"] = orig
+                break
+
     return mapping
 
 def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, available_ledgers=None):
     """
     Parses the spares register Excel and extracts:
     1. All unique HSN codes + combined GST rates -> expected ledger names (Gst Spares {Rate}%-{HSN Code}).
-    2. All detected Tax ledgers (CGST, SGST, IGST).
+    2. All detected Tax ledgers (CGST, SGST, IGST) calculated mathematically from tax rates.
     3. Auto-maps them to available Tally ledgers.
     4. Auto-maps Misc / Round-off ledger (e.g. Misc Exp).
     """
@@ -212,11 +227,9 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
     col_date = column_mappings.get("invoice_date")
     col_hsn = column_mappings.get("hsn_code")
     col_price = column_mappings.get("selling_price")
-    col_cgst = column_mappings.get("cgst_amount")
-    col_sgst = column_mappings.get("sgst_amount")
     col_cgst_pct = column_mappings.get("cgst_rate")
     col_sgst_pct = column_mappings.get("sgst_rate")
-    col_igst = column_mappings.get("igst_amount")
+    col_igst_pct = column_mappings.get("igst_rate")
 
     if not col_inv or col_inv not in df.columns:
         raise ValueError("Could not find or map 'Invoice Number' column")
@@ -227,6 +240,7 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
 
     hsn_rate_map = {}
     tax_keys = set()
+    tax_totals = {}
     total_selling_price = 0.0
     total_cgst = 0.0
     total_sgst = 0.0
@@ -243,41 +257,37 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
         price = to_float(row.get(col_price))
         total_selling_price += price
         
-        c_amt = to_float(row.get(col_cgst)) if col_cgst and col_cgst in df.columns else 0.0
-        s_amt = to_float(row.get(col_sgst)) if col_sgst and col_sgst in df.columns else 0.0
-        i_amt = to_float(row.get(col_igst)) if col_igst and col_igst in df.columns else 0.0
+        # Determine tax rates directly from mapped rate columns
+        c_pct = to_float(row.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
+        s_pct = to_float(row.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
+        i_pct = to_float(row.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
+        
+        c_rate = int(round(c_pct)) if c_pct > 0 else 0
+        s_rate = int(round(s_pct)) if s_pct > 0 else 0
+        i_rate = int(round(i_pct)) if i_pct > 0 else 0
+        tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+        
+        # Calculate statutory commercial tax amounts mathematically
+        c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
+        s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
+        i_amt = custom_round_2dec(price * (i_rate / 100.0)) if i_rate > 0 else 0.0
         
         total_cgst += c_amt
         total_sgst += s_amt
         total_igst += i_amt
-        
-        # Determine rates
-        c_pct = to_float(row.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else None
-        s_pct = to_float(row.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else None
-        
-        if c_pct is not None and s_pct is not None and (c_pct > 0 or s_pct > 0):
-            c_rate = int(round(c_pct))
-            s_rate = int(round(s_pct))
-            tot_rate = c_rate + s_rate
-        elif price > 0:
-            if c_amt > 0 or s_amt > 0:
-                c_rate = int(round((c_amt / price) * 100))
-                s_rate = int(round((s_amt / price) * 100))
-                tot_rate = int(round(((c_amt + s_amt) / price) * 100))
-            elif i_amt > 0:
-                tot_rate = int(round((i_amt / price) * 100))
-                c_rate, s_rate = 0, 0
-            else:
-                tot_rate, c_rate, s_rate = 0, 0, 0
-        else:
-            tot_rate, c_rate, s_rate = 0, 0, 0
             
         if c_rate > 0:
-            tax_keys.add(f"Cgst {c_rate}% Output")
+            k = f"Cgst {c_rate}% Output"
+            tax_keys.add(k)
+            tax_totals[k] = tax_totals.get(k, 0.0) + c_amt
         if s_rate > 0:
-            tax_keys.add(f"Sgst {s_rate}% Output")
-        if tot_rate > 0 and (c_amt == 0 and s_amt == 0 and i_amt > 0):
-            tax_keys.add(f"Igst {tot_rate}% Output")
+            k = f"Sgst {s_rate}% Output"
+            tax_keys.add(k)
+            tax_totals[k] = tax_totals.get(k, 0.0) + s_amt
+        if i_rate > 0:
+            k = f"Igst {i_rate}% Output"
+            tax_keys.add(k)
+            tax_totals[k] = tax_totals.get(k, 0.0) + i_amt
             
         key = (raw_hsn, tot_rate)
         if key not in hsn_rate_map:
@@ -334,7 +344,8 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
             "tax_key": tax_key,
             "target_ledger": tax_key,
             "matched_ledger": matched or "",
-            "is_matched": bool(matched)
+            "is_matched": bool(matched),
+            "total_tax": round(tax_totals.get(tax_key, 0.0), 2)
         })
 
     # 3. Misc / Round-off Ledger auto-match

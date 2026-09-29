@@ -24,6 +24,15 @@ def custom_round(val):
     sign = 1 if f >= 0 else -1
     return sign * math.floor(abs(f) + 0.5)
 
+def custom_round_2dec(val):
+    """Exact half-up commercial rounding to 2 decimal places."""
+    try:
+        f = float(val)
+    except (ValueError, TypeError):
+        return 0.0
+    sign = 1 if f >= 0 else -1
+    return sign * (math.floor(abs(f) * 100.0 + 0.5) / 100.0)
+
 def generate_accounting_formatted_excel(
     file_path,
     sheet_name=0,
@@ -52,11 +61,9 @@ def generate_accounting_formatted_excel(
     col_date = column_mappings.get("invoice_date")
     col_hsn = column_mappings.get("hsn_code")
     col_price = column_mappings.get("selling_price")
-    col_cgst = column_mappings.get("cgst_amount")
-    col_sgst = column_mappings.get("sgst_amount")
     col_cgst_pct = column_mappings.get("cgst_rate")
     col_sgst_pct = column_mappings.get("sgst_rate")
-    col_igst = column_mappings.get("igst_amount")
+    col_igst_pct = column_mappings.get("igst_rate")
 
     # Filter by date range if provided
     if col_date and (from_date or to_date):
@@ -94,9 +101,17 @@ def generate_accounting_formatted_excel(
 
         for _, r in grp.iterrows():
             price = to_float(r.get(col_price))
-            c_amt = to_float(r.get(col_cgst)) if col_cgst and col_cgst in grp.columns else 0.0
-            s_amt = to_float(r.get(col_sgst)) if col_sgst and col_sgst in grp.columns else 0.0
-            i_amt = to_float(r.get(col_igst)) if col_igst and col_igst in grp.columns else 0.0
+            c_pct = to_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in grp.columns else 0.0
+            s_pct = to_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in grp.columns else 0.0
+            i_pct = to_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in grp.columns else 0.0
+
+            c_rate = int(round(c_pct)) if c_pct > 0 else 0
+            s_rate = int(round(s_pct)) if s_pct > 0 else 0
+            i_rate = int(round(i_pct)) if i_pct > 0 else 0
+
+            c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
+            s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
+            i_amt = custom_round_2dec(price * (i_rate / 100.0)) if i_rate > 0 else 0.0
             
             inv_price += price
             inv_cgst += c_amt
@@ -126,19 +141,18 @@ def generate_accounting_formatted_excel(
             raw_hsn = raw_hsn[:-2]
 
         price = to_float(r.get(col_price))
-        c_amt = to_float(r.get(col_cgst)) if col_cgst and col_cgst in df.columns else 0.0
-        s_amt = to_float(r.get(col_sgst)) if col_sgst and col_sgst in df.columns else 0.0
-        i_amt = to_float(r.get(col_igst)) if col_igst and col_igst in df.columns else 0.0
+        c_pct = to_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else 0.0
+        s_pct = to_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else 0.0
+        i_pct = to_float(r.get(col_igst_pct)) if col_igst_pct and col_igst_pct in df.columns else 0.0
 
-        # Rate
-        c_pct = to_float(r.get(col_cgst_pct)) if col_cgst_pct and col_cgst_pct in df.columns else None
-        s_pct = to_float(r.get(col_sgst_pct)) if col_sgst_pct and col_sgst_pct in df.columns else None
-        if c_pct is not None and s_pct is not None and (c_pct > 0 or s_pct > 0):
-            tot_rate = int(round(c_pct + s_pct))
-        elif price > 0:
-            tot_rate = int(round(((c_amt + s_amt + i_amt) / price) * 100))
-        else:
-            tot_rate = 18
+        c_rate = int(round(c_pct)) if c_pct > 0 else 0
+        s_rate = int(round(s_pct)) if s_pct > 0 else 0
+        i_rate = int(round(i_pct)) if i_pct > 0 else 0
+        tot_rate = i_rate if i_rate > 0 else (c_rate + s_rate)
+
+        c_amt = custom_round_2dec(price * (c_rate / 100.0)) if c_rate > 0 else 0.0
+        s_amt = custom_round_2dec(price * (s_rate / 100.0)) if s_rate > 0 else 0.0
+        i_amt = custom_round_2dec(price * (i_rate / 100.0)) if i_rate > 0 else 0.0
 
         hsn_key = f"{raw_hsn}_{tot_rate}"
         default_target = f"Gst Spares {tot_rate}%-{raw_hsn}"

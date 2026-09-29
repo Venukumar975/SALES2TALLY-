@@ -89,22 +89,22 @@ const ACCT_TARGET_FIELDS = [
         desc: "Base taxable amount credited to Spares HSN Ledger"
     },
     {
-        id: "cgst_amount",
-        label: "CGST Amount",
+        id: "cgst_rate",
+        label: "CGST Rate (%)",
         required: true,
-        desc: "Central GST tax amount for intra-state spares"
+        desc: "Central GST tax percentage (e.g. 9%, 14%, 2.5%)"
     },
     {
-        id: "sgst_amount",
-        label: "SGST Amount",
+        id: "sgst_rate",
+        label: "SGST Rate (%)",
         required: true,
-        desc: "State GST tax amount for intra-state spares"
+        desc: "State GST tax percentage (e.g. 9%, 14%, 2.5%)"
     },
     {
-        id: "igst_amount",
-        label: "IGST Amount",
+        id: "igst_rate",
+        label: "IGST Rate (%)",
         required: false,
-        desc: "Integrated GST tax amount for inter-state spares"
+        desc: "Integrated GST tax percentage for inter-state spares (e.g. 18%, 28%)"
     }
 ];
 
@@ -627,7 +627,7 @@ function buildAcctMappingGrid(headers, currentMappings) {
                 fetchAcctDateRange(e.target.value);
             }
             // If HSN code or rate/amount column mapping changed, re-analyze sheet
-            if (field.id === "hsn_code" || field.id === "selling_price" || field.id === "cgst_amount" || field.id === "sgst_amount") {
+            if (field.id === "hsn_code" || field.id === "selling_price" || field.id === "cgst_rate" || field.id === "sgst_rate" || field.id === "igst_rate") {
                 onAcctSheetChanged();
             }
         });
@@ -997,11 +997,27 @@ function renderAcctTaxesMappingGrid(taxesList) {
         colDiv.style.minWidth = "220px";
         colDiv.style.flex = "1";
 
+        const labelDiv = document.createElement("div");
+        labelDiv.style.display = "flex";
+        labelDiv.style.justifyContent = "space-between";
+        labelDiv.style.alignItems = "center";
+
         const label = document.createElement("label");
         label.style.fontSize = "0.85rem";
         label.style.fontWeight = "600";
         label.style.color = "var(--text-muted)";
         label.innerText = `${t.tax_key} Ledger in Tally:`;
+        labelDiv.appendChild(label);
+
+        if (t.total_tax != null && t.total_tax > 0) {
+            const amountBadge = document.createElement("span");
+            amountBadge.style.fontSize = "0.78rem";
+            amountBadge.style.fontWeight = "700";
+            amountBadge.style.color = "var(--brand-primary)";
+            amountBadge.style.fontFamily = "var(--font-mono)";
+            amountBadge.textContent = `₹ ${Number(t.total_tax).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            labelDiv.appendChild(amountBadge);
+        }
 
         const wrapper = document.createElement("div");
         wrapper.className = "select-wrapper";
