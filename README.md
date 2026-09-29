@@ -1,10 +1,15 @@
 # SALES2TALLY — Enterprise Sales & Purchase Registers Automation Suite
 
+[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20Source--Available-red.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Framework-Flask%203.1-black.svg)](https://flask.palletsprojects.com/)
 [![Tally Prime](https://img.shields.io/badge/Tally%20Prime-Port%209000-green.svg)](https://tallysolutions.com/)
 [![Architecture](https://img.shields.io/badge/Architecture-Dual--Mode%20Sales-orange.svg)]()
 [![Precision](https://img.shields.io/badge/Precision-₹0.00%20Zero--Difference-success.svg)]()
+
+> [!CAUTION]
+> **PROPRIETARY & CONFIDENTIAL SOURCE-AVAILABLE REPOSITORY**  
+> This repository is **NOT open-source software**. Access to view this code is granted strictly for personal, educational code review, security audit, and evaluation purposes only. Copying, cloning, modifying, redistributing, or unauthorized commercial exploitation is strictly prohibited without prior express written permission from **Venu Kumar**. See the full [`LICENSE`](LICENSE) for details.
 
 **SALES2TALLY** is an enterprise-grade automation platform designed for chartered accountants, tax consultants, automobile dealerships, and service centers. It converts complex external sales and purchase spreadsheets (`.xlsx`, `.xls`) into fully validated, paisa-balanced **Tally Prime XML vouchers** and formatted audit summary workbooks.
 
@@ -315,5 +320,14 @@ python build_pipeline.py
 
 ## License & Proprietary Notice
 
-Copyright © 2026 Venukumar. All rights reserved.  
-Proprietary software developed for automated Tally Prime commercial accounting integration.
+This project is licensed under the **Proprietary and Confidential Source-Available License**.  
+All rights, title, and interest in and to this Software remain exclusively with **Venu Kumar**.
+
+- This is a proprietary, source-available project and is **NOT open-source software**.
+- Access to view this repository on GitHub is granted strictly for personal, educational code review, security audit, and evaluation purposes only.
+- Copying, cloning, mirroring, modifying, distributing, or commercial deployment without prior express written permission is strictly prohibited.
+- For commercial subscriptions, licensing inquiries, or permissions:  
+  **Venu Kumar** | Email: [pichikavenu975@gmail.com](mailto:pichikavenu975@gmail.com)  
+  Cloud Gateway: [https://pdf2tally-backend.onrender.com/](https://pdf2tally-backend.onrender.com/)
+
+See the full [`LICENSE`](LICENSE) file for complete terms and conditions.
