@@ -30,6 +30,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[InstallDelete]
+; Clean previous runtimes to prevent stale namespace directories
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
 ; All bundled obfuscated application files and runtimes
 Source: "dist\SALES2TALLY\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

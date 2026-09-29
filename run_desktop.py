@@ -49,6 +49,12 @@ try:
     import pythonnet
 
     # Data & Excel engines
+    try:
+        import pytz
+        if not hasattr(pytz, "__version__") or not pytz.__version__:
+            pytz.__version__ = "2026.4"
+    except Exception:
+        pass
     import pandas
     import numpy
     import openpyxl

@@ -148,11 +148,41 @@
 
     <!-- CARD 3: TALLY PRIME INTEGRATION & PARTY CONFIGURATION -->
     <section class="workflow-card" id="acct-card-tally" style="display: none;">
-        <div class="card-head">
-            <div class="card-icon-badge">3</div>
-            <div class="card-head-text">
-                <h2>Tally Prime Integration &amp; Party Configuration</h2>
-                <p>Connect to Tally Prime on Port 9000, select customer account, and verify party popup defaults</p>
+        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="card-icon-badge">3</div>
+                <div class="card-head-text">
+                    <h2>Tally Prime Integration &amp; Party Configuration</h2>
+                    <p>Connect to Tally Prime on Port 9000, select customer account, and verify party popup defaults</p>
+                </div>
+            </div>
+            <!-- Volatile Bucket Status Badges (Right side of Card 3 Heading) -->
+            <div id="acct-buckets-container" style="display: flex; align-items: center; gap: 14px; margin-left: auto;">
+                <!-- HSN Bucket Pod -->
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <div id="acct-hsn-bucket-badge" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.12); color: #f59e0b; transition: all 0.3s ease;" title="Volatile in-memory bucket for unique HSN code ledgers">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 11V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v5"/>
+                            <path d="M4 11h16l-1.5 9.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 11z"/>
+                            <path d="M10 4V2h4v2"/>
+                        </svg>
+                        <span id="acct-hsn-bucket-label">HSN Bucket</span>
+                    </div>
+                    <span id="acct-hsn-bucket-count" style="font-size: 0.72rem; color: #94a3b8; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.3px;">0 Ledgers</span>
+                </div>
+
+                <!-- GST Bucket Pod -->
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <div id="acct-tax-bucket-badge" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.12); color: #f59e0b; transition: all 0.3s ease;" title="Volatile in-memory bucket for CGST, SGST, IGST tax ledgers">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 11V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v5"/>
+                            <path d="M4 11h16l-1.5 9.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 11z"/>
+                            <path d="M10 4V2h4v2"/>
+                        </svg>
+                        <span id="acct-tax-bucket-label">GST Bucket</span>
+                    </div>
+                    <span id="acct-tax-bucket-count" style="font-size: 0.72rem; color: #94a3b8; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.3px;">0 Ledgers</span>
+                </div>
             </div>
         </div>
 

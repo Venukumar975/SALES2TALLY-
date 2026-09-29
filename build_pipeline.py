@@ -72,6 +72,7 @@ required_modules = [
     "openpyxl",
     "xlsxwriter",
     "pandas",
+    "pytz",
     "numpy",
     "requests",
     "urllib3",

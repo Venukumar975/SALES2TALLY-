@@ -11,11 +11,57 @@ const AccountingState = {
     headers: [],
     columnMappings: {},
     availableLedgers: [],
+    uniqueHsnSet: new Set(),
     detectedHsn: [],
     detectedTaxes: [],
     generatedXmlFilename: null,
     generatedExcelFilename: null
 };
+
+// Volatile in-memory buckets (never persisted to disk or cache)
+const VolatileBuckets = {
+    hsn: {},          // { [hsnCode]: [matching ledgers containing code] }
+    tax: {
+        cgst: [],
+        sgst: [],
+        igst: []
+    },
+    generalSpares: [] // Ledgers containing "spares" or "spare"
+};
+
+function setBucketBadgeStatus(badgeId, labelId, text, state, countText = "") {
+    const badge = document.getElementById(badgeId);
+    const label = document.getElementById(labelId);
+    if (label) label.textContent = text;
+    if (badge) {
+        if (state === "filling") {
+            badge.style.borderColor = "rgba(245, 158, 11, 0.5)";
+            badge.style.background = "rgba(245, 158, 11, 0.12)";
+            badge.style.color = "#f59e0b";
+        } else if (state === "ready") {
+            badge.style.borderColor = "rgba(16, 185, 129, 0.5)";
+            badge.style.background = "rgba(16, 185, 129, 0.12)";
+            badge.style.color = "#10b981";
+        } else {
+            badge.style.borderColor = "rgba(100, 116, 139, 0.3)";
+            badge.style.background = "rgba(100, 116, 139, 0.1)";
+            badge.style.color = "#94a3b8";
+        }
+    }
+
+    const countId = badgeId === "acct-hsn-bucket-badge" ? "acct-hsn-bucket-count" : "acct-tax-bucket-count";
+    const countEl = document.getElementById(countId);
+    if (countEl && countText !== undefined && countText !== "") {
+        countEl.textContent = countText;
+        if (state === "ready") {
+            countEl.style.color = "#10b981";
+        } else if (state === "filling") {
+            countEl.style.color = "#f59e0b";
+        } else {
+            countEl.style.color = "#94a3b8";
+        }
+    }
+}
 
 const ACCT_TARGET_FIELDS = [
     {
@@ -213,6 +259,7 @@ async function loadAcctCompanyLedgers(companyName) {
             if (AccountingState.fileId) {
                 await onAcctSheetChanged();
             } else {
+                await fillVolatileBucketsSequential();
                 populateAcctDropdowns(null, null);
             }
         } else {
@@ -297,6 +344,7 @@ async function startAcctModalSync() {
         if (AccountingState.fileId) {
             await onAcctSheetChanged();
         } else {
+            await fillVolatileBucketsSequential();
             populateAcctDropdowns(null, null);
         }
 
@@ -348,6 +396,12 @@ function resetAcctFile() {
     AccountingState.sheets = [];
     AccountingState.headers = [];
     AccountingState.columnMappings = {};
+    AccountingState.uniqueHsnSet = new Set();
+    VolatileBuckets.hsn = {};
+    VolatileBuckets.tax = { cgst: [], sgst: [], igst: [] };
+    VolatileBuckets.generalSpares = [];
+    setBucketBadgeStatus("acct-hsn-bucket-badge", "acct-hsn-bucket-label", "HSN Bucket", "neutral", "0 Ledgers");
+    setBucketBadgeStatus("acct-tax-bucket-badge", "acct-tax-bucket-label", "GST Bucket", "neutral", "0 Ledgers");
 
     document.getElementById("acct_excel_file").value = "";
     document.getElementById("acct-file-info-container").style.display = "none";
@@ -451,13 +505,19 @@ async function onAcctSheetChanged() {
         AccountingState.columnMappings = data.column_mappings;
         AccountingState.detectedHsn = data.detected_hsn_ledgers || [];
         AccountingState.detectedTaxes = data.detected_tax_ledgers || [];
-        AccountingState.availableLedgers = data.available_ledgers || [];
+        if (data.available_ledgers && data.available_ledgers.length > 0) {
+            AccountingState.availableLedgers = data.available_ledgers;
+        }
+        AccountingState.uniqueHsnSet = new Set((data.unique_hsn_codes || []).map(c => String(c).trim()));
 
         // Setup Date Filter Slicer (Matched to Item Invoice design)
         updateAcctDateSlicer(data.min_date, data.max_date);
 
         // Build Card 2: Mapping Grid (Matched to Item Invoice design)
         buildAcctMappingGrid(AccountingState.headers, data.column_mappings);
+
+        // Fill Volatile Buckets & Run Sequential Auto-Mapping
+        await fillVolatileBucketsSequential();
 
         // Build Card 3 & 4: HSN Spares & Tax Ledgers
         renderAcctHsnMappingGrid(AccountingState.detectedHsn);
@@ -566,6 +626,10 @@ function buildAcctMappingGrid(headers, currentMappings) {
             if (field.id === "invoice_date") {
                 fetchAcctDateRange(e.target.value);
             }
+            // If HSN code or rate/amount column mapping changed, re-analyze sheet
+            if (field.id === "hsn_code" || field.id === "selling_price" || field.id === "cgst_amount" || field.id === "sgst_amount") {
+                onAcctSheetChanged();
+            }
         });
 
         wrapper.appendChild(select);
@@ -629,7 +693,187 @@ function syncAcctTallyLedgers() {
     openAcctSyncModal();
 }
 
-// 7. RENDER HSN SPARES MAPPING GRID (MATCHED TO TAX RATES GRID)
+// 7. VOLATILE BUCKETS & DYNAMIC SEQUENTIAL AUTO-MAPPING
+async function fillVolatileBucketsSequential() {
+    const ledgers = AccountingState.availableLedgers || [];
+    if (!ledgers || ledgers.length === 0) {
+        setBucketBadgeStatus("acct-hsn-bucket-badge", "acct-hsn-bucket-label", "HSN Bucket (No Ledgers)", "neutral", "0 Ledgers");
+        setBucketBadgeStatus("acct-tax-bucket-badge", "acct-tax-bucket-label", "GST Bucket (No Ledgers)", "neutral", "0 Ledgers");
+        return;
+    }
+
+    // Step 1: GST / Tax Bucket Dynamic Sequential Filling
+    setBucketBadgeStatus("acct-tax-bucket-badge", "acct-tax-bucket-label", "GST Bucket (Scanning...)", "filling", "0 Found");
+    await new Promise(r => setTimeout(r, 20)); // allow browser to paint orange badge
+
+    VolatileBuckets.tax.cgst = [];
+    VolatileBuckets.tax.sgst = [];
+    VolatileBuckets.tax.igst = [];
+    VolatileBuckets.generalSpares = [];
+
+    // Chunk through ledgers so large lists (30k-40k) show live dynamic progress
+    const chunkSize = 5000;
+    for (let i = 0; i < ledgers.length; i += chunkSize) {
+        const end = Math.min(i + chunkSize, ledgers.length);
+        for (let j = i; j < end; j++) {
+            const l = ledgers[j];
+            const low = l.toLowerCase();
+            if (low.includes("cgst")) VolatileBuckets.tax.cgst.push(l);
+            if (low.includes("sgst")) VolatileBuckets.tax.sgst.push(l);
+            if (low.includes("igst")) VolatileBuckets.tax.igst.push(l);
+            if (low.includes("spares") || low.includes("spare")) VolatileBuckets.generalSpares.push(l);
+        }
+        const currentFound = VolatileBuckets.tax.cgst.length + VolatileBuckets.tax.sgst.length + VolatileBuckets.tax.igst.length;
+        const pct = Math.round((end / ledgers.length) * 100);
+        setBucketBadgeStatus("acct-tax-bucket-badge", "acct-tax-bucket-label", `GST Bucket (${pct}%)`, "filling", `${currentFound} Found`);
+        await new Promise(r => setTimeout(r, 15));
+    }
+
+    const totalTaxCount = VolatileBuckets.tax.cgst.length + VolatileBuckets.tax.sgst.length + VolatileBuckets.tax.igst.length;
+    setBucketBadgeStatus("acct-tax-bucket-badge", "acct-tax-bucket-label", "GST Bucket (Ready)", "ready", `${totalTaxCount} Ledgers`);
+    await new Promise(r => setTimeout(r, 25)); // allow browser to paint green badge
+
+    // Step 2: HSN Buckets Dynamic Sequential Filling (Code by code)
+    const hsnCodes = Array.from(AccountingState.uniqueHsnSet || []);
+    if (hsnCodes.length === 0) {
+        setBucketBadgeStatus("acct-hsn-bucket-badge", "acct-hsn-bucket-label", "HSN Bucket (Ready)", "ready", "0 Ledgers");
+    } else {
+        setBucketBadgeStatus("acct-hsn-bucket-badge", "acct-hsn-bucket-label", `HSN Bucket (0/${hsnCodes.length})`, "filling", "Starting...");
+        await new Promise(r => setTimeout(r, 20));
+
+        VolatileBuckets.hsn = {};
+        let totalHsnMatched = 0;
+
+        for (let i = 0; i < hsnCodes.length; i++) {
+            const code = String(hsnCodes[i]).trim();
+            if (!code) continue;
+
+            const matchedLedgers = [];
+            for (let j = 0; j < ledgers.length; j++) {
+                if (ledgers[j].includes(code)) {
+                    matchedLedgers.push(ledgers[j]);
+                }
+            }
+            VolatileBuckets.hsn[code] = matchedLedgers;
+            totalHsnMatched += matchedLedgers.length;
+
+            setBucketBadgeStatus(
+                "acct-hsn-bucket-badge",
+                "acct-hsn-bucket-label",
+                `HSN Bucket (${i + 1}/${hsnCodes.length})`,
+                "filling",
+                `${totalHsnMatched} Ledgers Found`
+            );
+
+            // Yield to UI between HSN codes so user dynamically sees the count growing
+            await new Promise(r => setTimeout(r, 20));
+        }
+
+        setBucketBadgeStatus("acct-hsn-bucket-badge", "acct-hsn-bucket-label", "HSN Bucket (Ready)", "ready", `${totalHsnMatched} Ledgers`);
+        await new Promise(r => setTimeout(r, 25));
+    }
+
+    // Step 3: ONLY after BOTH bucket fillings are 100% complete, let auto-mappers enter sequentially
+    applySequentialBucketMapping();
+
+    // Re-render UI mapping grids with the auto-mapped values and green checkmarks
+    renderAcctHsnMappingGrid(AccountingState.detectedHsn);
+    renderAcctTaxesMappingGrid(AccountingState.detectedTaxes);
+}
+
+function applySequentialBucketMapping() {
+    const ledgers = AccountingState.availableLedgers || [];
+    if (!ledgers || ledgers.length === 0) return;
+
+    // 1. Sequential Auto-Mapping for HSN rows using ONLY VolatileBuckets.hsn
+    if (AccountingState.detectedHsn && AccountingState.detectedHsn.length > 0) {
+        AccountingState.detectedHsn.forEach(item => {
+            const code = String(item.hsn_code).trim();
+            const rate = String(item.gst_rate).trim();
+            const bucket = VolatileBuckets.hsn[code] || [];
+
+            let matched = "";
+            if (bucket.length > 0) {
+                // Priority A: Strict rate matching (e.g. 18 in "Spares 18% - 87141090" or "87141090 Spares 18%")
+                const rateRegex = new RegExp(`\\b${rate}\\b`);
+                const rateMatches = bucket.filter(l => rateRegex.test(l));
+                if (rateMatches.length > 0) {
+                    matched = rateMatches[0];
+                } else if (bucket.length === 1) {
+                    matched = bucket[0];
+                }
+            } else if (item.matched_ledger && ledgers.some(l => l.toLowerCase() === item.matched_ledger.toLowerCase())) {
+                matched = item.matched_ledger;
+            }
+
+            if (matched) {
+                item.matched_ledger = matched;
+                item.is_matched = true;
+            } else {
+                item.matched_ledger = "";
+                item.is_matched = false;
+            }
+        });
+    }
+
+    // 2. Sequential Auto-Mapping for Tax rows using ONLY VolatileBuckets.tax with STRICT rate matching
+    if (AccountingState.detectedTaxes && AccountingState.detectedTaxes.length > 0) {
+        AccountingState.detectedTaxes.forEach(t => {
+            const taxKeyLow = t.tax_key.toLowerCase();
+            let bucket = [];
+            if (taxKeyLow.includes("cgst")) bucket = VolatileBuckets.tax.cgst;
+            else if (taxKeyLow.includes("sgst")) bucket = VolatileBuckets.tax.sgst;
+            else if (taxKeyLow.includes("igst")) bucket = VolatileBuckets.tax.igst;
+
+            let matched = "";
+            // Extract the detected rate percentage (e.g. 9 from "Cgst 9% Output")
+            const rateMatch = t.tax_key.match(/\b(\d+(?:\.\d+)?)\s*%/);
+            if (rateMatch && bucket.length > 0) {
+                const r = rateMatch[1];
+                // Strict regex matching rate boundary so rate 9 matches "Cgst 9", "Cgst 9%", but NOT 6 or 18
+                const rateRegex = new RegExp(`\\b${r}\\b`);
+                const rateCandidates = bucket.filter(l => rateRegex.test(l));
+
+                if (rateCandidates.length > 0) {
+                    // Priority A: Candidate having "output" if taxKey has "output"
+                    if (taxKeyLow.includes("output")) {
+                        matched = rateCandidates.find(l => l.toLowerCase().includes("output")) || "";
+                    }
+                    // Priority B: First candidate with matching rate
+                    if (!matched) {
+                        matched = rateCandidates[0];
+                    }
+                }
+                // STRICT RULE: If no candidate in bucket has rate 9, NEVER match to a different rate (like 6%)!
+            } else if (bucket.length === 1 && !/\b\d+\b/.test(bucket[0])) {
+                // If only 1 general tax ledger exists with no conflicting numbers
+                matched = bucket[0];
+            }
+
+            if (matched) {
+                t.matched_ledger = matched;
+                t.is_matched = true;
+            } else {
+                t.matched_ledger = "";
+                t.is_matched = false;
+            }
+        });
+    }
+
+    // 3. Customer Account (Party A/c Name) auto-match: startsWith "srikara"
+    const partySelect = document.getElementById("acct_party_name");
+    if (partySelect && (!partySelect.value || partySelect.value === "")) {
+        for (let i = 0; i < ledgers.length; i++) {
+            if (ledgers[i].trim().toLowerCase().startsWith("srikara")) {
+                partySelect.value = ledgers[i];
+                onAcctPartyChanged();
+                break;
+            }
+        }
+    }
+}
+
+// 8. RENDER HSN SPARES MAPPING GRID (USES SMALL BUCKET ITEMS ONLY)
 function renderAcctHsnMappingGrid(hsnList) {
     const container = document.getElementById("acct-hsn-mapping-list");
     const badge = document.getElementById("acct-hsn-count-badge");
@@ -675,12 +919,21 @@ function renderAcctHsnMappingGrid(hsnList) {
         select.setAttribute("data-hsn-key", `${item.hsn_code}_${item.gst_rate}`);
         select.setAttribute("data-hsn-code", item.hsn_code);
 
-        // Populate options ONLY with actual Tally ledgers (No default synthetic target)
+        // Populate options ONLY with ledgers from this HSN code's volatile bucket
+        const code = String(item.hsn_code).trim();
+        const bucket = VolatileBuckets.hsn[code] || [];
+
         let optionsHtml = `<option value="">-- Not Mapped --</option>`;
-        if (AccountingState.availableLedgers && AccountingState.availableLedgers.length > 0) {
-            AccountingState.availableLedgers.forEach(l => {
+        if (bucket.length > 0) {
+            bucket.forEach(l => {
                 const isSelected = (item.is_matched && item.matched_ledger && l.toLowerCase() === item.matched_ledger.toLowerCase()) ? "selected" : "";
                 optionsHtml += `<option value="${l}" ${isSelected}>${l}</option>`;
+            });
+        } else if (item.matched_ledger) {
+            optionsHtml += `<option value="${item.matched_ledger}" selected>${item.matched_ledger}</option>`;
+        } else if (VolatileBuckets.generalSpares && VolatileBuckets.generalSpares.length > 0) {
+            VolatileBuckets.generalSpares.forEach(l => {
+                optionsHtml += `<option value="${l}">${l}</option>`;
             });
         }
         select.innerHTML = optionsHtml;
@@ -711,9 +964,13 @@ function renderAcctHsnMappingGrid(hsnList) {
 
         select.addEventListener("change", (e) => {
             if (e.target.value) {
+                item.matched_ledger = e.target.value;
+                item.is_matched = true;
                 statusTag.style.cssText = "background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;";
                 statusTag.textContent = "✓ Selected";
             } else {
+                item.matched_ledger = "";
+                item.is_matched = false;
                 statusTag.style.cssText = "background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;";
                 statusTag.textContent = "⚠️ Not Mapped";
             }
@@ -726,7 +983,7 @@ function renderAcctHsnMappingGrid(hsnList) {
     });
 }
 
-// 8. RENDER TAXES GRID (MATCHED TO CARD 5)
+// 9. RENDER TAXES GRID (USES SMALL TAX BUCKETS ONLY)
 function renderAcctTaxesMappingGrid(taxesList) {
     const container = document.getElementById("acct-tax-mapping-list");
     if (!container) return;
@@ -753,12 +1010,20 @@ function renderAcctTaxesMappingGrid(taxesList) {
         select.className = "acct-tax-select";
         select.setAttribute("data-tax-key", t.tax_key);
 
+        const taxKeyLow = t.tax_key.toLowerCase();
+        let bucket = [];
+        if (taxKeyLow.includes("cgst")) bucket = VolatileBuckets.tax.cgst;
+        else if (taxKeyLow.includes("sgst")) bucket = VolatileBuckets.tax.sgst;
+        else if (taxKeyLow.includes("igst")) bucket = VolatileBuckets.tax.igst;
+
         let optionsHtml = `<option value="">-- Not Mapped --</option>`;
-        if (AccountingState.availableLedgers && AccountingState.availableLedgers.length > 0) {
-            AccountingState.availableLedgers.forEach(l => {
+        if (bucket.length > 0) {
+            bucket.forEach(l => {
                 const isSelected = (t.is_matched && t.matched_ledger && l.toLowerCase() === t.matched_ledger.toLowerCase()) ? "selected" : "";
                 optionsHtml += `<option value="${l}" ${isSelected}>${l}</option>`;
             });
+        } else if (t.matched_ledger) {
+            optionsHtml += `<option value="${t.matched_ledger}" selected>${t.matched_ledger}</option>`;
         }
         select.innerHTML = optionsHtml;
         wrapper.appendChild(select);
@@ -772,9 +1037,13 @@ function renderAcctTaxesMappingGrid(taxesList) {
 
         select.addEventListener("change", (e) => {
             if (e.target.value) {
+                t.matched_ledger = e.target.value;
+                t.is_matched = true;
                 statusTag.style.cssText = "background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; align-self: flex-start; margin-top: 2px;";
                 statusTag.textContent = "✓ Selected";
             } else {
+                t.matched_ledger = "";
+                t.is_matched = false;
                 statusTag.style.cssText = "background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; align-self: flex-start; margin-top: 2px;";
                 statusTag.textContent = "⚠️ Not Mapped";
             }
@@ -787,22 +1056,35 @@ function renderAcctTaxesMappingGrid(taxesList) {
     });
 }
 
+// 10. POPULATE MISC & PARTY DROPDOWNS (FAST STRING JOIN)
 function populateAcctDropdowns(matchedMisc, suggestedParty) {
+    const ledgers = AccountingState.availableLedgers || [];
+
     // 1. Misc Ledger Dropdown
     const miscSelect = document.getElementById("acct_misc_ledger");
     if (miscSelect) {
-        miscSelect.innerHTML = `<option value="">-- Choose Misc Ledger --</option>`;
-        if (AccountingState.availableLedgers && AccountingState.availableLedgers.length > 0) {
+        if (ledgers.length > 0) {
+            const opts = ['<option value="">-- Choose Misc Ledger --</option>'];
+            const targetMisc = (matchedMisc || "").toLowerCase();
             let miscSelected = false;
-            AccountingState.availableLedgers.forEach(l => {
-                const isSelected = (matchedMisc && l.toLowerCase() === matchedMisc.toLowerCase()) ? "selected" : "";
-                if (isSelected) miscSelected = true;
-                miscSelect.innerHTML += `<option value="${l}" ${isSelected}>${l}</option>`;
+
+            const miscCandidates = ledgers.filter(l => {
+                const low = l.toLowerCase();
+                return low.includes("misc") || low.includes("round");
             });
-            // If matchedMisc not selected, check if "Misc Exp" is present in Tally ledgers
+            const populateList = miscCandidates.length > 0 ? miscCandidates : ledgers;
+            for (let i = 0; i < populateList.length; i++) {
+                const l = populateList[i];
+                const isSelected = (targetMisc && l.toLowerCase() === targetMisc) ? "selected" : "";
+                if (isSelected) miscSelected = true;
+                opts.push(`<option value="${l}" ${isSelected}>${l}</option>`);
+            }
+            miscSelect.innerHTML = opts.join('');
+
             if (!miscSelected) {
                 for (let opt of miscSelect.options) {
-                    if (opt.value.toLowerCase() === "misc exp") {
+                    const valLow = opt.value.toLowerCase();
+                    if (valLow === "misc exp" || valLow === "misc expense" || valLow === "misc expenses") {
                         opt.selected = true;
                         break;
                     }
@@ -813,15 +1095,29 @@ function populateAcctDropdowns(matchedMisc, suggestedParty) {
         }
     }
 
-    // 2. Party Ledger Dropdown
+    // 2. Party Ledger Dropdown (Fast string buffer + auto-select Srikara)
     const partySelect = document.getElementById("acct_party_name");
     if (partySelect) {
-        partySelect.innerHTML = `<option value="">-- Choose Party Ledger from Tally --</option>`;
-        if (AccountingState.availableLedgers && AccountingState.availableLedgers.length > 0) {
-            AccountingState.availableLedgers.forEach(l => {
-                const isSelected = (suggestedParty && l.toLowerCase() === suggestedParty.toLowerCase()) ? "selected" : "";
-                partySelect.innerHTML += `<option value="${l}" ${isSelected}>${l}</option>`;
-            });
+        if (ledgers.length > 0) {
+            let partyTarget = (suggestedParty || "").toLowerCase();
+            if (!partyTarget) {
+                for (let i = 0; i < ledgers.length; i++) {
+                    if (ledgers[i].trim().toLowerCase().startsWith("srikara")) {
+                        partyTarget = ledgers[i].toLowerCase();
+                        break;
+                    }
+                }
+            }
+
+            const opts = ['<option value="">-- Choose Party Ledger from Tally --</option>'];
+            for (let i = 0; i < ledgers.length; i++) {
+                const l = ledgers[i];
+                const isSelected = (partyTarget && l.toLowerCase() === partyTarget) ? "selected" : "";
+                opts.push(`<option value="${l}" ${isSelected}>${l}</option>`);
+            }
+            partySelect.innerHTML = opts.join('');
+        } else {
+            partySelect.innerHTML = `<option value="">-- Choose Party Ledger from Tally --</option>`;
         }
         onAcctPartyChanged();
     }

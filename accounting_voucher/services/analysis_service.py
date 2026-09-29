@@ -93,16 +93,37 @@ def best_match_ledger(target_name, available_ledgers, threshold=0.6):
         if l_clean == t_clean:
             return l
 
-    # Filter candidates if HSN numbers present in target
+    # Filter candidates if HSN numbers present in target, or if tax/misc keywords present
     candidates = []
     if hsn_numbers:
         for l in available_ledgers:
             if all(num in l for num in hsn_numbers):
                 candidates.append(l)
     else:
-        candidates = available_ledgers
+        target_lower = target_name.lower()
+        if "cgst" in target_lower:
+            candidates = [l for l in available_ledgers if "cgst" in l.lower()]
+        elif "sgst" in target_lower:
+            candidates = [l for l in available_ledgers if "sgst" in l.lower()]
+        elif "igst" in target_lower:
+            candidates = [l for l in available_ledgers if "igst" in l.lower()]
+        elif "misc" in target_lower:
+            candidates = [l for l in available_ledgers if "misc" in l.lower()]
+        elif "round" in target_lower:
+            candidates = [l for l in available_ledgers if "round" in l.lower()]
+        else:
+            candidates = available_ledgers[:50]
+
+        # If a percentage rate exists in target (e.g. 9%), candidates must strictly contain that rate number
+        rate_m = re.search(r'\b(\d+(?:\.\d+)?)\s*%', target_name)
+        if rate_m:
+            r = rate_m.group(1)
+            rate_candidates = [l for l in candidates if re.search(rf'\b{re.escape(r)}\b', l)]
+            if rate_candidates:
+                candidates = rate_candidates
+            else:
+                return ""
             
-    # 3. Best similarity score among valid candidates
     best_ledger = ""
     best_score = 0.0
     for l in candidates:
@@ -325,16 +346,22 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
             matched_misc = m
             break
             
-    # 4. Party Ledger auto-match (look for common company service / branch debtors like Srikara)
+    # 4. Party Ledger auto-match (look for ledger starting with or matching Srikara)
     suggested_party = ""
-    for cand in ["Srikara Tuni Branch Service", "Srikara Tuni Branch", "Srikara"]:
-        p = best_match_ledger(cand, available_ledgers, threshold=0.7)
-        if p:
-            suggested_party = p
+    for l in available_ledgers:
+        if l.strip().lower().startswith("srikara"):
+            suggested_party = l
             break
+    if not suggested_party:
+        for cand in ["Srikara Tuni Branch Service", "Srikara Tuni Branch", "Srikara"]:
+            p = best_match_ledger(cand, available_ledgers, threshold=0.7)
+            if p:
+                suggested_party = p
+                break
             
     unique_invoices = df[col_inv].dropna().nunique()
     min_date, max_date = get_spares_date_range(df, col_date)
+    unique_hsn_codes = sorted(list({str(item["hsn_code"]).strip() for item in hsn_rate_map.values() if item.get("hsn_code")}))
 
     return {
         "success": True,
@@ -345,6 +372,7 @@ def analyze_spares_excel(file_path, sheet_name=0, column_mappings=None, availabl
         "total_sgst": round(total_sgst, 2),
         "total_igst": round(total_igst, 2),
         "column_mappings": column_mappings,
+        "unique_hsn_codes": unique_hsn_codes,
         "detected_hsn_ledgers": detected_hsn_list,
         "detected_tax_ledgers": detected_taxes_list,
         "matched_misc_ledger": matched_misc or "",
