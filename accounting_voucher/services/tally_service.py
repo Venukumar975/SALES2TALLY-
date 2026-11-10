@@ -279,11 +279,44 @@ def _resolve_company_dir(company_name):
                 return p
     return None
 
-def get_cached_accounting_company_info(company_name):
-    """Retrieve cached company data including ledgers, details, count, and last sync date."""
+def get_accounting_company_config(company_name):
+    """Retrieve saved preferences (voucher_type, party_name, misc_ledger) for a company."""
+    if not company_name:
+        return {}
     co_dir = _resolve_company_dir(company_name)
     if not co_dir:
-        return {"ledgers": [], "ledger_details": {}, "count": 0, "last_sync": ""}
+        return {}
+    config_path = os.path.join(co_dir, "company_config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_accounting_company_config(company_name, config_dict):
+    """Persist settings for a company in Accounting Invoice Mode."""
+    if not company_name or not isinstance(config_dict, dict):
+        return
+    safe_co = re.sub(r'[\\/*?:"<>|]', "", company_name).strip()
+    co_dir = os.path.join(get_accounting_cache_folder(), safe_co)
+    os.makedirs(co_dir, exist_ok=True)
+    config_path = os.path.join(co_dir, "company_config.json")
+    
+    existing = get_accounting_company_config(company_name)
+    existing.update(config_dict)
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+def get_cached_accounting_company_info(company_name):
+    """Retrieve cached company data including ledgers, details, count, last sync date, and saved config."""
+    co_dir = _resolve_company_dir(company_name)
+    if not co_dir:
+        return {"ledgers": [], "ledger_details": {}, "count": 0, "last_sync": "", "company_config": {}}
     for fname in ("accounting_ledgers_cache.json", "ledgers.json"):
         cache_path = os.path.join(co_dir, fname)
         if os.path.exists(cache_path):
@@ -303,11 +336,12 @@ def get_cached_accounting_company_info(company_name):
                         "count": data.get("count", len(ledgers)),
                         "last_sync": last_sync,
                         "ledgers": ledgers,
-                        "ledger_details": details
+                        "ledger_details": details,
+                        "company_config": get_accounting_company_config(company_name)
                     }
             except Exception:
                 pass
-    return {"ledgers": [], "ledger_details": {}, "count": 0, "last_sync": ""}
+    return {"ledgers": [], "ledger_details": {}, "count": 0, "last_sync": "", "company_config": {}}
 
 def get_cached_accounting_ledgers(company_name):
     """Retrieve list of cached ledgers for the company."""

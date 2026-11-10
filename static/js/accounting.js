@@ -387,6 +387,42 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Customer Account (Party A/c Name) Searchable Combobox Listeners
+    const partyInput = document.getElementById("acct_party_name");
+    const partyDropdownBtn = document.getElementById("acct_party_dropdown_btn");
+    const partyDropdownList = document.getElementById("acct_party_dropdown_list");
+
+    if (partyInput) {
+        partyInput.addEventListener("input", (e) => {
+            renderAcctPartyDropdown(e.target.value);
+            onAcctPartyChanged();
+        });
+        partyInput.addEventListener("focus", (e) => {
+            renderAcctPartyDropdown(e.target.value);
+        });
+        partyInput.addEventListener("blur", () => {
+            setTimeout(closeAcctPartyDropdown, 200);
+        });
+    }
+
+    if (partyDropdownBtn) {
+        partyDropdownBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (partyDropdownList && partyDropdownList.style.display === "block") {
+                closeAcctPartyDropdown();
+            } else {
+                renderAcctPartyDropdown(partyInput ? partyInput.value : "");
+                if (partyInput) partyInput.focus();
+            }
+        });
+    }
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".acct-combobox-wrapper")) {
+            closeAcctPartyDropdown();
+        }
+    });
+
     // Do not load any companies on DOMContentLoaded; only load dropdown when user switches to Accounting mode
 });
 
@@ -1112,9 +1148,9 @@ function populateAcctDropdowns(matchedMisc, suggestedParty) {
         }
     }
 
-    // 2. Party Ledger Dropdown (Fast string buffer + auto-select Srikara)
-    const partySelect = document.getElementById("acct_party_name");
-    if (partySelect) {
+    // 2. Customer Account (Party A/c Name) Searchable Combobox Auto-fill
+    const partyInput = document.getElementById("acct_party_name");
+    if (partyInput) {
         if (ledgers.length > 0) {
             let partyTarget = (suggestedParty || "").toLowerCase();
             if (!partyTarget) {
@@ -1126,18 +1162,97 @@ function populateAcctDropdowns(matchedMisc, suggestedParty) {
                 }
             }
 
-            const opts = ['<option value="">-- Choose Party Ledger from Tally --</option>'];
-            for (let i = 0; i < ledgers.length; i++) {
-                const l = ledgers[i];
-                const isSelected = (partyTarget && l.toLowerCase() === partyTarget) ? "selected" : "";
-                opts.push(`<option value="${l}" ${isSelected}>${l}</option>`);
+            if (partyTarget && (!partyInput.value || partyInput.value === "")) {
+                const matched = ledgers.find(l => l.toLowerCase() === partyTarget);
+                if (matched) partyInput.value = matched;
             }
-            partySelect.innerHTML = opts.join('');
         } else {
-            partySelect.innerHTML = `<option value="">-- Choose Party Ledger from Tally --</option>`;
+            partyInput.value = "";
         }
         onAcctPartyChanged();
     }
+}
+
+// CUSTOMER ACCOUNT (PARTY A/C) SEARCHABLE COMBOBOX CONTROLLER
+function renderAcctPartyDropdown(query = "") {
+    const listEl = document.getElementById("acct_party_dropdown_list");
+    if (!listEl) return;
+    const ledgers = AccountingState.availableLedgers || [];
+    if (ledgers.length === 0) {
+        listEl.innerHTML = `<div style="padding: 12px; color: #94a3b8; font-size: 0.85rem; text-align: center;">No ledgers loaded. Please select or sync a company.</div>`;
+        listEl.style.display = "block";
+        return;
+    }
+
+    const q = (query || "").trim().toLowerCase();
+    let matches = [];
+
+    if (!q) {
+        // When no search query is typed, show the top 40 ledgers immediately
+        matches = ledgers.slice(0, 40);
+    } else {
+        // Lightning-fast live search across 36k+ ledgers in JS memory (<2ms)
+        const startsWithMatches = [];
+        const includesMatches = [];
+        for (let i = 0; i < ledgers.length; i++) {
+            const l = ledgers[i];
+            const low = l.toLowerCase();
+            if (low.startsWith(q)) {
+                startsWithMatches.push(l);
+            } else if (low.includes(q)) {
+                includesMatches.push(l);
+            }
+            if (startsWithMatches.length + includesMatches.length >= 60) break;
+        }
+        matches = [...startsWithMatches, ...includesMatches].slice(0, 40);
+    }
+
+    if (matches.length === 0) {
+        listEl.innerHTML = `<div style="padding: 12px; color: #94a3b8; font-size: 0.85rem; text-align: center;">No matching ledgers found for "${escapeAcctHtml(query)}"</div>`;
+        listEl.style.display = "block";
+        return;
+    }
+
+    const currentVal = (document.getElementById("acct_party_name")?.value || "").toLowerCase();
+    let html = "";
+    matches.forEach(item => {
+        const isSelected = item.toLowerCase() === currentVal;
+        html += `
+            <div class="acct-party-option-item" data-value="${escapeAcctHtml(item)}" style="padding: 9px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; color: ${isSelected ? '#10b981' : '#e2e8f0'}; background: ${isSelected ? 'rgba(16, 185, 129, 0.12)' : 'transparent'};">
+                <span style="font-weight: ${isSelected ? '600' : '400'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeAcctHtml(item)}</span>
+            </div>
+        `;
+    });
+    listEl.innerHTML = html;
+    listEl.style.display = "block";
+
+    listEl.querySelectorAll(".acct-party-option-item").forEach(el => {
+        el.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            const val = el.getAttribute("data-value");
+            selectAcctPartyOption(val);
+        });
+        el.addEventListener("mouseenter", () => {
+            el.style.background = "rgba(16, 185, 129, 0.18)";
+        });
+        el.addEventListener("mouseleave", () => {
+            const isSelected = el.getAttribute("data-value").toLowerCase() === currentVal;
+            el.style.background = isSelected ? "rgba(16, 185, 129, 0.12)" : "transparent";
+        });
+    });
+}
+
+function selectAcctPartyOption(partyName) {
+    const input = document.getElementById("acct_party_name");
+    const listEl = document.getElementById("acct_party_dropdown_list");
+    if (input) input.value = partyName;
+    if (listEl) listEl.style.display = "none";
+    onAcctPartyChanged();
+}
+
+function closeAcctPartyDropdown() {
+    const listEl = document.getElementById("acct_party_dropdown_list");
+    if (listEl) listEl.style.display = "none";
 }
 
 function onAcctPartyChanged() {

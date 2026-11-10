@@ -10,7 +10,9 @@ from accounting_voucher.services.tally_service import (
     sync_accounting_ledgers_from_tally,
     get_cached_accounting_ledgers,
     get_cached_accounting_ledger_details,
-    get_cached_accounting_company_info
+    get_cached_accounting_company_info,
+    get_accounting_company_config,
+    save_accounting_company_config
 )
 from accounting_voucher.services.analysis_service import analyze_spares_excel
 from accounting_voucher.services.xml_generator import generate_accounting_vouchers_xml
@@ -45,10 +47,22 @@ def api_load_company():
             "count": co_info.get("count", 0),
             "last_sync": co_info.get("last_sync", ""),
             "ledgers": co_info.get("ledgers", []),
-            "ledger_details": co_info.get("ledger_details", {})
+            "ledger_details": co_info.get("ledger_details", {}),
+            "company_config": co_info.get("company_config", {})
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@accounting_bp.route("/api/accounting/save-config", methods=["POST"])
+def api_save_company_config():
+    """Save user-selected preferences (voucher type, party, misc) for a company."""
+    data = request.json or {}
+    company_name = (data.get("company_name") or "").strip()
+    if not company_name:
+        return jsonify({"success": False, "error": "Company Name is required"}), 400
+    config = data.get("config", {})
+    save_accounting_company_config(company_name, config)
+    return jsonify({"success": True})
 
 @accounting_bp.route("/api/accounting/companies", methods=["GET"])
 def api_get_companies():
@@ -74,7 +88,8 @@ def api_sync_tally():
             "count": count,
             "last_sync": last_sync,
             "ledgers": ledgers,
-            "ledger_details": details
+            "ledger_details": details,
+            "company_config": get_accounting_company_config(co_name)
         })
     except Exception as e:
         # Fall back to local cache if Tally is offline
@@ -88,6 +103,7 @@ def api_sync_tally():
                 "last_sync": co_info.get("last_sync", ""),
                 "ledgers": cached,
                 "ledger_details": co_info.get("ledger_details", {}),
+                "company_config": co_info.get("company_config", {}),
                 "warning": f"Could not connect to live Tally ({str(e)}). Loaded {len(cached)} cached ledgers."
             })
         return jsonify({"success": False, "error": f"Failed to sync with Tally: {str(e)}"}), 500
@@ -209,6 +225,17 @@ def api_generate_xml():
             from_date=data.get("from_date"),
             to_date=data.get("to_date")
         )
+
+        # Auto-persist chosen settings for this company so next session loads them automatically
+        try:
+            save_accounting_company_config(company_name, {
+                "voucher_type": voucher_type,
+                "party_name": party_name,
+                "misc_ledger": misc_ledger_name
+            })
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "filename": filename,

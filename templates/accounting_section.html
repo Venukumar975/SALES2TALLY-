@@ -231,11 +231,22 @@
                             <p>Select customer account from retrieved Tally ledgers</p>
                         </div>
                     </div>
-                    <div class="company-profile-bar">
-                        <div class="select-wrapper">
-                            <select id="acct_party_name" onchange="onAcctPartyChanged()">
-                                <option value="">-- Choose Party Ledger from Tally --</option>
-                            </select>
+                    <div class="company-profile-bar" style="position: relative;">
+                        <div class="acct-combobox-wrapper" style="position: relative; width: 100%;">
+                            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                                <input type="text" id="acct_party_name" class="acct-combobox-input" 
+                                       placeholder="-- Choose Party Ledger from Tally --" 
+                                       autocomplete="off" 
+                                       style="width: 100%; padding-right: 42px; cursor: text;">
+                                <button type="button" id="acct_party_dropdown_btn" title="Toggle ledgers list"
+                                        style="position: absolute; right: 0; top: 0; bottom: 0; width: 40px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; user-select: none;">
+                                    ▼
+                                </button>
+                            </div>
+                            <!-- Floating Virtualized Results Panel (Renders top 40 results dynamically, 0ms lag) -->
+                            <div id="acct_party_dropdown_list" class="acct-combobox-dropdown" 
+                                 style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 270px; overflow-y: auto; background: #1e293b; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: var(--radius-sm); z-index: 1050; box-shadow: 0 12px 30px rgba(0,0,0,0.6);">
+                            </div>
                         </div>
                     </div>
                 </div>

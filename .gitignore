@@ -15,6 +15,9 @@ dist/
 build/
 dist_obf/
 dist_installer/
+successful_builds/
+*.exe
+*.txt
 *.spec
 *.lic
 
